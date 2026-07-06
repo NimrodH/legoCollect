@@ -8,7 +8,7 @@
             "type": "chrome",
             "request": "launch",
             "name": "Open index.html",
-            "file": "c:\\develope\\lego2023\\legoProgPub\\index.html"
+            "file": "${workspaceFolder}/index.html"
         }
     ]
 }

@@ -736,7 +736,7 @@ function doClickConnection(event) {
     }
     if (event.source.parent.metadata && event.source.parent.metadata.inModel) {
         ///do not allow to change model if need to delete
-        if (currentSession ) {
+        if (currentSession  && currentSession.group !== "E") {
             let delButton = (near.children).filter(b => b.name == "delete")[0];
             if (delButton.isVisible && allowReport) {
                 console.log("we can't allow to change model [in doModelConnection] when need to delete");

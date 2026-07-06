@@ -60,7 +60,7 @@ class Session {
             let modelMx = currentModel.metadata.modelTitle;
             if (e.detail.action != "connect") { ///connect handle seperatly in 
                 saveUserAction(e.detail.action, e.detail.details, this.actionId++, e.detail.newElement.name, modelMx, currentModel.metadata.numOfBlocks + 1, Date.now(), this.userId, this.group, this.part)
-            } 
+            }
         }
         // Handle the event
     }
@@ -93,7 +93,7 @@ class Session {
             m1 = createModel("car", "M1", 5, 0, -5);
             m2 = createModel("chair", "M2", -5, 0, -5);
             m3 = createModel("dog", "M3", -5, 0, 5);
-            m4 = createModel("man", "M4", 5, 0, 5);
+            m4 = createModel("Sman", "M4", 5, 0, 5);
         }
 
         switch (this.group) {///TODO: build more then one model as defined for the group
@@ -116,7 +116,7 @@ class Session {
                 currentModel = createModel("chair", "M2", 5, 0, 5);
                 let modelData = this.trainingModelData.filter(x => x.modelName == currentModel.metadata.modelName);
                 reBuildModel(modelData, modelData.length + 1);
-                currentModel = createModel("man", "M4", -5, 0, -5);
+                currentModel = createModel("Sman", "M4", -5, 0, -5);
                 modelData = this.trainingModelData.filter(x => x.modelName == currentModel.metadata.modelName);
                 reBuildModel(modelData, modelData.length + 1);
                 currentModel = createModel("car", "M1", 5, 0, -5);
@@ -135,8 +135,8 @@ class Session {
                 //camera.position = new BABYLON.Vector3( -7, 1.5, 0);
                 //camera.setTarget(new BABYLON.Vector3( -5, 0, -5));
                 //////for _____ that is in 5, 0, 5
-                camera.position = new BABYLON.Vector3( 12, 1.0, 1);
-                camera.setTarget(new BABYLON.Vector3( 5, 0, 5));
+                camera.position = new BABYLON.Vector3(12, 1.0, 1);
+                camera.setTarget(new BABYLON.Vector3(5, 0, 5));
 
                 elementsMenu.position.x = 100;
                 //if (this.userId == "w1") {
@@ -246,18 +246,21 @@ class Session {
         this.runPart();
     }
 
-///to be removed when all wil became by events
-/*
-    reportClick(action, details, newElement) {
-        if (currentModel) {
-            let modelMx = currentModel.metadata.modelTitle;
-            saveUserAction(action, details, this.actionId++, newElement.name, modelMx, currentModel.metadata.numOfBlocks + 1, Date.now(), this.userId, this.group, this.part)
+    ///to be removed when all wil became by events
+    /*
+        reportClick(action, details, newElement) {
+            if (currentModel) {
+                let modelMx = currentModel.metadata.modelTitle;
+                saveUserAction(action, details, this.actionId++, newElement.name, modelMx, currentModel.metadata.numOfBlocks + 1, Date.now(), this.userId, this.group, this.part)
+            }
         }
-    }
-*/
+    */
     reportConnect(newElement) {
         if (!allowReport) {
-            
+
+            return;
+        }
+        if (this.group == "E") {
             return;
         }
         //console.log("reportConnect");
@@ -390,6 +393,16 @@ class Session {
         if (!allowReport) {
             return;
         }
+        if (this.group == "E") {
+            let addButton = (near.children).filter(b => b.name == "connect")[0];
+            let delButton = (near.children).filter(b => b.name == "delete")[0];
+
+            if (addButton) addButton.isVisible = true;
+            if (delButton) delButton.isVisible = true;
+
+            return;
+        }
+
         //console.log("reportDelete");
         ///it was worng so we still didnt incremnt connectedStage
         //console.log("this.connectedStage: " + this.connectedStage);
