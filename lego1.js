@@ -87,6 +87,82 @@ function getModel(modelLabel) {
 }
 /////////////////// GAME FUNCTIONS //////////////////////////
 
+function animateModelAboveButtons(model) {
+    if (!model) {
+        return;
+    }
+
+    const frameRate = 40;
+
+    // The buttons panel is the global "near" object.
+    // near.position is currently around (0, 1.6, 0).
+    // We move the finished model above it.
+    let targetPosition;
+
+    if (near && near.position) {
+        targetPosition = near.position.clone();
+        targetPosition.y += 0.7; // above the buttons
+    } else {
+        // fallback if near is not available
+        targetPosition = new BABYLON.Vector3(0, 2.8, 0);
+    }
+
+    // 50% smaller than its current size
+    const targetScaling = model.scaling.clone().scale(0.5);
+
+    const positionAnimation = new BABYLON.Animation(
+        "finishedModelMove",
+        "position",
+        frameRate,
+        BABYLON.Animation.ANIMATIONTYPE_VECTOR3,
+        BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT
+    );
+
+    positionAnimation.setKeys([
+        {
+            frame: 0,
+            value: model.position.clone()
+        },
+        {
+            frame: 2 * frameRate,
+            value: targetPosition
+        }
+    ]);
+
+    const scaleAnimation = new BABYLON.Animation(
+        "finishedModelScale",
+        "scaling",
+        frameRate,
+        BABYLON.Animation.ANIMATIONTYPE_VECTOR3,
+        BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT
+    );
+
+    scaleAnimation.setKeys([
+        {
+            frame: 0,
+            value: model.scaling.clone()
+        },
+        {
+            frame: 2 * frameRate,
+            value: targetScaling
+        }
+    ]);
+
+    // Optional: hide the M1 label during the animation.
+    // The label is not a child of the model, so otherwise it will stay in the old place.
+    if (model.metadata && model.metadata.labelObj) {
+        model.metadata.labelObj.hide();
+    }
+
+    scene.beginDirectAnimation(
+        model,
+        [positionAnimation, scaleAnimation],
+        0,
+        2 * frameRate,
+        false
+    );
+}
+
 ///move block and connect it to model
 function animate(box, oldPos, newPos, scene) {
     const frameRate = 40;
@@ -150,7 +226,7 @@ function setVisibleModel(theMesh, setItVisible) {
     } else {
         theMesh.metadata.labelObj.hide();
     }
-    
+
 }
 
 function createNearMenu(mode) {
@@ -169,7 +245,7 @@ function createNearMenu(mode) {
     //near.orientation = 1;
     near.backPlateMargin = 0.01;
     near.scaling = new BABYLON.Vector3(0.5, 0.5, 0.5);///0.5///0.1
-    
+
     function createTouchButton(name, title, color, theFunction) {
         //let button = new BABYLON.GUI.TouchHolographicButton(name);
         let button = new BABYLON.GUI.HolographicButton(name);
@@ -186,16 +262,37 @@ function createNearMenu(mode) {
         return button;
     }
 
-    createTouchButton("flipX", "/", "yellow", flipX);
-    createTouchButton("flipZ", "---", "yellow", flipZ);//X
-    createTouchButton("flipY", "|", "yellow", flipY);
-    createTouchButton("connect", "add\n< <", "yellow", connect);
-    //createTouchButton("turn\nmodel", "yellow", flipModel);
-    createTouchButton("delete", "delete\n> >", "yellow", removeLastBlock);
-    createTouchButton("red", "red", "red", colorRed);
-    createTouchButton("black", "black", "black", colorBlack);
-    createTouchButton("green", "green", "green", colorGreen);
-    createTouchButton("blue", "blue", "blue", colorBlue);
+    const hideableButtons = [];
+    let nearButtonsVisible = true;
+
+    function addHideableButton(name, title, color, theFunction) {
+        const button = createTouchButton(name, title, color, theFunction);
+        hideableButtons.push(button);
+        return button;
+    }
+
+    function toggleNearButtons() {
+        nearButtonsVisible = !nearButtonsVisible;
+
+        hideableButtons.forEach(button => {
+            button.isVisible = nearButtonsVisible;
+        });
+
+        hideButton.content.text = nearButtonsVisible ? "Hide" : "Show";
+    }
+
+    addHideableButton("flipX", "/", "yellow", flipX);
+    addHideableButton("flipZ", "---", "yellow", flipZ);
+    addHideableButton("flipY", "|", "yellow", flipY);
+    addHideableButton("connect", "add\n< <", "yellow", connect);
+    addHideableButton("delete", "delete\n> >", "yellow", removeLastBlock);
+    addHideableButton("red", "red", "red", colorRed);
+    addHideableButton("black", "black", "black", colorBlack);
+    addHideableButton("green", "green", "green", colorGreen);
+    addHideableButton("blue", "blue", "blue", colorBlue);
+    ///remove comment to add the hide button to the near menu for taking pictures
+    ////const hideButton = createTouchButton("hideButtons", "Hide", "yellow", toggleNearButtons);
+
     if (mode == "record") {
         createTouchButton("reBuild", "re\nBuild", "yellow", reBuildModelBut);
         createTouchButton("Save", "Save", "yellow", saveModel);
@@ -226,7 +323,7 @@ function createModel(theModelName, theModelTitle, x, y, z) {
 }
 
 function disposeModels() {
-    for (let index = modelsArray.length-1; index > -1; index--) {
+    for (let index = modelsArray.length - 1; index > -1; index--) {
         //let element = modelsArray[index];
         let element = modelsArray.pop();
         element.metadata.labelObj.dispose();
@@ -245,7 +342,7 @@ function setSelectedConnectionColor(theColor) {
     let vectorColor = colorName2Vector(theColor);
     if (selectedConnection) {
         selectedConnection.parent.material.diffuseColor = vectorColor;
-        const reportClickEvent = new CustomEvent("reportClick", {detail: { action: "color", details: theColor, newElement: selectedConnection.parent }});
+        const reportClickEvent = new CustomEvent("reportClick", { detail: { action: "color", details: theColor, newElement: selectedConnection.parent } });
         dispatchEvent(reportClickEvent);
 
         //if (currentSession) {
@@ -271,9 +368,9 @@ function removeLastBlock() {
         return;
     }
     ///if user click another model before he click delete we dont want to delete from wrong 
-    if (currentSession ) {
+    if (currentSession) {
         //let modelLabel = currentSession.modelInConnectedStage[currentSession.connectedStage];////?///
-        
+
     }
 
     let lastBlockNum = currentModel.metadata.numOfBlocks;
@@ -297,7 +394,7 @@ function removeLastBlock() {
     lastBlock.dispose();
     currentModel.metadata.numOfBlocks = currentModel.metadata.numOfBlocks - 1;
     setOnGround(currentModel, 1);
-    if (currentSession ) {
+    if (currentSession) {
         currentSession.reportDelete();
     }
 
@@ -548,7 +645,7 @@ function destSphereByOldData(blockNumber, destPoint) {
 ///called from connect and from reBuildModel
 function doConnect(newElement, newColor, selectedConnectionMame, toAnimate) {
     ////let globData = arrange4Connect(newElement, newColor, selectedConnectionMame)
-    const reportClickEvent = new CustomEvent("reportClick", {detail: { action: "connect", details:toAnimate, newElement: newElement }});
+    const reportClickEvent = new CustomEvent("reportClick", { detail: { action: "connect", details: toAnimate, newElement: newElement } });
     dispatchEvent(reportClickEvent);
 
     if (toAnimate) {
@@ -573,9 +670,9 @@ function doConnect(newElement, newColor, selectedConnectionMame, toAnimate) {
     const matrix_m = getModelSelectedConnection(currentModel).parent.computeWorldMatrix(true);
     var global_pos_m = BABYLON.Vector3.TransformCoordinates(getModelSelectedConnection(currentModel).position, matrix_m);
     var global_delta = global_pos_m.subtract(global_pos_sc);
-    
+
     /////moveConnect(newElement, toAnimate, globData);
-    
+
     ///move the elment by the calaculated vector, then add it to model
     newElement.setParent(null);
     let oldPos = newElement.position;//BABYLON.Vector3.TransformCoordinates(newElement.position, matrix_m);   
@@ -601,7 +698,7 @@ function doConnect(newElement, newColor, selectedConnectionMame, toAnimate) {
     sc.scaling = new BABYLON.Vector3(0.9, 0.9, 0.9);
     sc.material.diffuseColor = notSelectedColor;
     setModelSelectedConnection(currentModel, null);
-    
+
 }
 /*
 function arrange4Connect(newElement, newColor, selectedConnectionMame) {
@@ -679,7 +776,7 @@ function flipModel() {
             console.log("error in flipModel");
             break;
     }
-    const reportClickEvent = new CustomEvent("reportClick", {detail: { action: "flipModel", details:currentModel.rotation, newElement: currentModel }});
+    const reportClickEvent = new CustomEvent("reportClick", { detail: { action: "flipModel", details: currentModel.rotation, newElement: currentModel } });
     dispatchEvent(reportClickEvent);
 
     //if (currentSession) {
@@ -692,7 +789,7 @@ function flipZ() {
     if (selectedConnection) {
         selectedConnection.parent.rotation = rotationX;
         selectedConnection.parent.position.y = menuY - elementsMenuY;
-        const reportClickEvent = new CustomEvent("reportClick", {detail: { action: "flip", details:"Z", newElement: selectedConnection.parent }});
+        const reportClickEvent = new CustomEvent("reportClick", { detail: { action: "flip", details: "Z", newElement: selectedConnection.parent } });
         dispatchEvent(reportClickEvent);
 
         //if (currentSession) {
@@ -705,7 +802,7 @@ function flipX() {
     if (selectedConnection) {
         selectedConnection.parent.rotation = rotationY;
         selectedConnection.parent.position.y = menuY - elementsMenuY;
-        const reportClickEvent = new CustomEvent("reportClick", {detail: { action: "flip", details:"X", newElement: selectedConnection.parent }});
+        const reportClickEvent = new CustomEvent("reportClick", { detail: { action: "flip", details: "X", newElement: selectedConnection.parent } });
         dispatchEvent(reportClickEvent);
 
         //if (currentSession) {
@@ -718,12 +815,12 @@ function flipY() {
     if (selectedConnection) {
         selectedConnection.parent.rotation = rotationZ;
         setOnGround(selectedConnection.parent, scaleFactor);
-        const reportClickEvent = new CustomEvent("reportClick", {detail: { action: "flip", details:"Y", newElement: selectedConnection.parent }});
+        const reportClickEvent = new CustomEvent("reportClick", { detail: { action: "flip", details: "Y", newElement: selectedConnection.parent } });
         dispatchEvent(reportClickEvent);
 
-//        if (currentSession) {
-//            currentSession.reportClick("flip", "Y", selectedConnection.parent);
-//        }
+        //        if (currentSession) {
+        //            currentSession.reportClick("flip", "Y", selectedConnection.parent);
+        //        }
     }
 
 }
@@ -736,7 +833,7 @@ function doClickConnection(event) {
     }
     if (event.source.parent.metadata && event.source.parent.metadata.inModel) {
         ///do not allow to change model if need to delete
-        if (currentSession  && currentSession.group !== "E") {
+        if (currentSession && currentSession.group !== "E") {
             let delButton = (near.children).filter(b => b.name == "delete")[0];
             if (delButton.isVisible && allowReport) {
                 console.log("we can't allow to change model [in doModelConnection] when need to delete");
@@ -745,7 +842,7 @@ function doClickConnection(event) {
             }
         }
         doModelConnection(event.source);
-        const reportClickEvent = new CustomEvent("reportClick", {detail: { action: "point", details:"on-model", newElement: event.source.parent }});
+        const reportClickEvent = new CustomEvent("reportClick", { detail: { action: "point", details: "on-model", newElement: event.source.parent } });
         dispatchEvent(reportClickEvent);
         /*
         if (currentSession) {
@@ -755,7 +852,7 @@ function doClickConnection(event) {
         return;
     } else {
         doElementConnection(event.source);
-        const reportClickEvent = new CustomEvent("reportClick", {detail: { action: "point", details:"on-menu", newElement: event.source.parent }});
+        const reportClickEvent = new CustomEvent("reportClick", { detail: { action: "point", details: "on-menu", newElement: event.source.parent } });
         dispatchEvent(reportClickEvent);
         /*
 //        if (currentSession) {

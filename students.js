@@ -53,6 +53,11 @@ class Session {
         addEventListener("reportClick", this.handleReportClick.bind(this))
     }
 
+    modelStepLabels(modelName, modelTitle) {
+        const steps = this.trainingModelData.filter(x => x.modelName == modelName).length;
+        return Array(steps).fill(modelTitle);
+    }
+
     handleReportClick = (e) => {
         //console.log('Event received:');
         //console.log(e);
@@ -77,28 +82,33 @@ class Session {
         ///we use it when comparing its selection in reportConnect
         ///the value of item i is the model name to use in overall stage i in this session
         ///the next stage number of spsific model is kept on the model
-        if (this.userId == 666) {
+        if (this.group == "A") {
+            // Group A: only one module, M1
+            this.modelInConnectedStage = this.modelStepLabels("Sman", "M1");
+        } else if (this.userId == 666) {
             this.modelInConnectedStage = ["M1", "M1", "M4"];
         } else {
             this.modelInConnectedStage = ["M1", "M1", "M4", "M4", "M4", "M2", "M2", "M2", "M2", "M3", "M3", "M3", "M2", "M2", "M2", "M2", "M4", "M4", "M4", "M4", "M1", "M1", "M1", "M3", "M3", "M3", "M1", "M1", "M1", "M4", "M4", "M4", "M4", "M2", "M2", "M2", "M3", "M3", "M3", "M1", "M1", "M1", "M3", "M3"];
-        }
-        //this.worldByModel; ///model Mn will be in the world that is the value of item n
+        }        //this.worldByModel; ///model Mn will be in the world that is the value of item n
         let m1;
         let m2;
         let m3;
         let m4;
-        if (this.group == "A" || this.group == "B" || this.group == "C") {
-            ///the normal groups. (differ than rebuild (D) or takepics)
-            /// we may need to set it in the "switch" if we want differant positions in each group
+        if (this.group == "A") {
+            // Group A: only M1.
+            // Old M4 position was: (5, 0, 5)
+            // Two squares nearer the camera means z is reduced by 2: (5, 0, 3)
+            m1 = createModel("Sman", "M1", 6, 0, 3);
+        } else if (this.group == "B" || this.group == "C") {
+            ///the normal multi-model groups
             m1 = createModel("car", "M1", 5, 0, -5);
             m2 = createModel("chair", "M2", -5, 0, -5);
             m3 = createModel("dog", "M3", -5, 0, 5);
-            m4 = createModel("Sman", "M4", 5, 0, 5);
+            m4 = createModel("man", "M4", 5, 0, 5);
         }
-
         switch (this.group) {///TODO: build more then one model as defined for the group
-            case "A": ///all models in the same world
-                this.worldByModel = { "M1": "W1", "M2": "W1", "M3": "W1", "M4": "W1" };
+            case "A": ///only M1 in W1
+                this.worldByModel = { "M1": "W1" };
                 break;
             case "B": ///two worlds
                 setVisibleModel(m3, false);
@@ -348,11 +358,23 @@ class Session {
                 //console.log("this.connectedStage: " + this.connectedStage);
                 //console.log(this.modelInConnectedStage.length + 1);
                 if (this.connectedStage == this.modelInConnectedStage.length) {
-                    ///we have to start the exam stage
+                    if (this.group == "A") {
+                        // Group A: when M1 is finished, do not start the next part.
+                        // Instead, animate the finished model above the buttons.
+                        animateModelAboveButtons(currentModel);
+
+                        this.doFbMessage("יפה מאוד. המודל הושלם.", null);
+
+                        // Optional: prevent more actions after completion
+                        allowReport = false;
+
+                        return;
+                    }
+
+                    ///other groups continue as before
                     this.nextStage();
                     return;
-                }
-                if (this.modelInConnectedStage[this.connectedStage] == currentModel.metadata.modelTitle) {
+                } if (this.modelInConnectedStage[this.connectedStage] == currentModel.metadata.modelTitle) {
                     //this.doFbMessage(currentModel.metadata.modelTitle + ":במודל זה " + (step + 1) + " יפה מאד. המשך לשלב");
                     let msg = "Very good. Please do next step " + (step + 1) + " in this Model (" + currentModel.metadata.modelTitle + ")";
                     let mName = currentModel.metadata.modelName;
