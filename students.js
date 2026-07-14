@@ -363,13 +363,14 @@ class Session {
                         // Instead, animate the finished model above the buttons.
                         animateModelAboveButtons(currentModel);
 
-                                this.doFbMessage(
-            "בנית עוד מודל בהצלחה\n" +
-            "באפשרותך לבנות מודל נוסף זהה לחלוטין\n" +
-            "אם תסיים אותו תקבל: X ₪\n" +
-            "האם תרצה להמשיך למודל הבא?",
-            null
-        );
+                        this.doFbMessage(
+                            "בנית עוד מודל בהצלחה\n" +
+                            "באפשרותך לבנות מודל נוסף זהה לחלוטין\n" +
+                            "אם תסיים אותו תקבל: X ₪\n" +
+                            "האם תרצה להמשיך למודל הבא?",
+                            null,
+                            ["yes", "No"]
+                        );
 
 
                         // Optional: prevent more actions after completion
@@ -462,11 +463,11 @@ class Session {
         console.log("reportWrongMove: ");
     }
 
-    doFbMessage(message, pic) {
+    doFbMessage(message, pic, buttons = null) {
         if (this.fb) {
             this.fb.dispose();
         }
-        this.fb = new FbMessages(message, 0, 2.5, 2, pic)
+        this.fb = new FbMessages(message, 0, 2.5, 2, pic, buttons);
     }
 }
 //this.fb = new FbMessages("בוקר אביבי ושמח");

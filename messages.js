@@ -71,7 +71,7 @@ class Messages {
             if (e.detail.action == "connect") {
                 this.nextButton.isEnabled = true;
             }
-            
+
 
         }
     }
@@ -329,7 +329,7 @@ class Messages {
         if (enforceTraining) {
             this.nextButton.isEnabled = false;//////to allow only after clicking
         }
-        
+
     }
 
     showColorButtons() {
@@ -337,7 +337,7 @@ class Messages {
         near = createNearMenu("no record"); //was ////N1/5 for screenshots
         //near = {}; ////N1/5 (=without comment)
         near.isVisible = true;
-                //    this.textField.text = "מעל האבנים מופיע עכשיו מאחוריך פאנל כחול עם כפתורים\n ניתן לגרור אותו לכל מקום במסך\n\nהכפתורים יפעלו על האבן שנבחרה:\n\n [ red ] כפתורים לבחירת צבע לדוגמא \n  אבן שוכבת אופקית [ / ]\nאבן עומדת [ | ]\nאבן שוכבת אנכית [ -- ] "
+        //    this.textField.text = "מעל האבנים מופיע עכשיו מאחוריך פאנל כחול עם כפתורים\n ניתן לגרור אותו לכל מקום במסך\n\nהכפתורים יפעלו על האבן שנבחרה:\n\n [ red ] כפתורים לבחירת צבע לדוגמא \n  אבן שוכבת אופקית [ / ]\nאבן עומדת [ | ]\nאבן שוכבת אנכית [ -- ] "
         this.textField.text = "מעל אבני הבניין, מופיע לוח עם כפתורים שונים\n שישמשו אותך לאורך הניסוי\n\nנא לחצ/י על כפתור\n לבחירת צבע אדום לאבן\n [red] "
         if (enforceTraining) {
             this.nextButton.isEnabled = false;
@@ -435,38 +435,67 @@ class FbMessages {
     plane;
     picPLane;
     advancedTexture4Pic = null;
+    buttonPlane = null;
+    advancedTexture4Buttons = null;
     image;
-    constructor(text, x = 0, y = 2.5, z = 2, pic = null) {
+    constructor(text, x = 0, y = 2.5, z = 2, pic = null, buttons = null) {
         ///Set font
         var font_size = 24;
         var font = "bold " + font_size + "px Arial";
 
-        ///Set height for plane
-        var planeHeight = 0.5;
+        const lines = text.split("\n");
+        const lineHeight = font_size * 1.4;
 
-        ///Set height for dynamic texture
-        var DTHeight = 1.5 * font_size; //or set as wished
-
-        ///Calcultae ratio
-        var ratio = planeHeight / DTHeight;
-
-        ///Use a temporay dynamic texture to calculate the length of the text on the dynamic texture canvas
+        ///Use a temporary dynamic texture to calculate the longest line
         var temp = new BABYLON.DynamicTexture("DynamicTexture", 64, scene);
         var tmpctx = temp.getContext();
         tmpctx.font = font;
-        var DTWidth = tmpctx.measureText(text).width + 8;
-        temp.dispose();
-        ///Calculate width the plane has to be 
-        var planeWidth = DTWidth * ratio;
 
-        ///Create dynamic texture and write the text
-        this.dynamicTexture = new BABYLON.DynamicTexture("DynamicTexture", { width: DTWidth, height: DTHeight }, scene, false);
+        let DTWidth = 0;
+        for (let i = 0; i < lines.length; i++) {
+            DTWidth = Math.max(DTWidth, tmpctx.measureText(lines[i]).width + 16);
+        }
+
+        const DTHeight = lineHeight * lines.length + 16;
+        temp.dispose();
+
+        ///Scale plane size from texture size
+        var ratio = 0.5 / (1.5 * font_size);
+        var planeWidth = DTWidth * ratio;
+        var planeHeight = DTHeight * ratio;
+
+        ///Create dynamic texture and write multiline text
+        this.dynamicTexture = new BABYLON.DynamicTexture(
+            "DynamicTexture",
+            { width: DTWidth, height: DTHeight },
+            scene,
+            false
+        );
+
         this.mat = new BABYLON.StandardMaterial("mat", scene);
         this.mat.diffuseTexture = this.dynamicTexture;
-        this.dynamicTexture.drawText(text, null, null, font, "#000000", "#ffffff", true);
+
+        const ctx = this.dynamicTexture.getContext();
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, DTWidth, DTHeight);
+
+        ctx.font = font;
+        ctx.fillStyle = "#000000";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+
+        for (let i = 0; i < lines.length; i++) {
+            ctx.fillText(lines[i], DTWidth / 2, 8 + i * lineHeight);
+        }
+
+        this.dynamicTexture.update();
 
         ///Create plane and set dynamic texture as material
-        this.plane = BABYLON.MeshBuilder.CreatePlane("plane", { width: planeWidth, height: planeHeight }, scene);
+        this.plane = BABYLON.MeshBuilder.CreatePlane("plane", {
+            width: planeWidth,
+            height: planeHeight
+        }, scene);
+
         this.plane.material = this.mat;
         this.plane.position.y = y;
         this.plane.position.z = z;
@@ -486,13 +515,52 @@ class FbMessages {
             this.advancedTexture4Pic = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(this.picPLane);
 
             this.image = new BABYLON.GUI.Image("but");
-            this.image.source = pic;//"textures/pink_py.png";
+            this.image.source = pic;
             this.advancedTexture4Pic.addControl(this.image);
 
             this.advancedTexture4Pic.background = 'green';
         }
-    }
+        if (buttons) {
+            const buttonPlaneHeight = 0.6;
+            const buttonPlaneWidth = Math.max(planeWidth, 2.5);
 
+            this.buttonPlane = BABYLON.MeshBuilder.CreatePlane("messageButtons", {
+                width: buttonPlaneWidth,
+                height: buttonPlaneHeight
+            }, scene);
+
+            this.buttonPlane.position.x = x;
+            this.buttonPlane.position.y = y - (planeHeight / 2) - (buttonPlaneHeight / 2) - 0.1;
+            this.buttonPlane.position.z = z;
+            this.buttonPlane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_Y;
+
+            this.advancedTexture4Buttons = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(this.buttonPlane);
+
+            const panel = new BABYLON.GUI.StackPanel();
+            panel.isVertical = false;
+            panel.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
+            panel.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_CENTER;
+            this.advancedTexture4Buttons.addControl(panel);
+
+            buttons.forEach(buttonName => {
+                const button = BABYLON.GUI.Button.CreateSimpleButton(buttonName, buttonName);
+                button.width = "300px";
+                button.height = "120px";
+                button.color = "white";
+                button.fontSize = 45;
+                button.background = "green";
+                button.paddingLeft = "20px";
+                button.paddingRight = "20px";
+
+                button.onPointerUpObservable.add(() => {
+                    console.log(buttonName);
+                });
+
+                panel.addControl(button);
+            });
+        }
+
+    }
     setY(newY) {
         this.plane.position.y = newY;
     }
@@ -512,6 +580,12 @@ class FbMessages {
         }
         if (this.advancedTexture4Pic) {
             this.advancedTexture4Pic.dispose();
+        }
+        if (this.buttonPlane) {
+            this.buttonPlane.dispose();
+        }
+        if (this.advancedTexture4Buttons) {
+            this.advancedTexture4Buttons.dispose();
         }
 
     }
