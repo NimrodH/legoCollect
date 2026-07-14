@@ -363,7 +363,14 @@ class Session {
                         // Instead, animate the finished model above the buttons.
                         animateModelAboveButtons(currentModel);
 
-                        this.doFbMessage("יפה מאוד. המודל הושלם.", null);
+                                this.doFbMessage(
+            "בנית עוד מודל בהצלחה\n" +
+            "באפשרותך לבנות מודל נוסף זהה לחלוטין\n" +
+            "אם תסיים אותו תקבל: X ₪\n" +
+            "האם תרצה להמשיך למודל הבא?",
+            null
+        );
+
 
                         // Optional: prevent more actions after completion
                         allowReport = false;
