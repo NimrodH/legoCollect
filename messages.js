@@ -438,7 +438,15 @@ class FbMessages {
     buttonPlane = null;
     advancedTexture4Buttons = null;
     image;
-    constructor(text, x = 0, y = 2.5, z = 2, pic = null, buttons = null) {
+    constructor(
+        text,
+        x = 0,
+        y = 2.5,
+        z = 2,
+        pic = null,
+        buttons = null,
+        onButtonClick = null
+    ) {
         ///Set font
         var font_size = 24;
         var font = "bold " + font_size + "px Arial";
@@ -521,21 +529,42 @@ class FbMessages {
             this.advancedTexture4Pic.background = 'green';
         }
         if (buttons) {
-            const buttonPlaneHeight = 0.6;
-            const buttonPlaneWidth = Math.max(planeWidth, 2.5);
-
+            // Increase the physical height of the 3D plane that contains the buttons.
+            const buttonPlaneHeight = 1.2;
+            const buttonPlaneWidth = Math.max(planeWidth, 3.2);
             this.buttonPlane = BABYLON.MeshBuilder.CreatePlane("messageButtons", {
                 width: buttonPlaneWidth,
                 height: buttonPlaneHeight
             }, scene);
 
             this.buttonPlane.position.x = x;
-            this.buttonPlane.position.y = y - (planeHeight / 2) - (buttonPlaneHeight / 2) - 0.1;
-            this.buttonPlane.position.z = z;
+            // Place the buttons directly below the message, but high enough
+            // to remain inside the user's field of view.
+            this.buttonPlane.position.y =
+                y -
+                (planeHeight / 2) -
+                (buttonPlaneHeight / 2) -
+                0.03;
+
+            // Move the button plane slightly toward the camera.
+            // This also prevents it from visually overlapping the message plane.
+            this.buttonPlane.position.z = z - 0.05;
             this.buttonPlane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_Y;
 
-            this.advancedTexture4Buttons = BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(this.buttonPlane);
+            // Match the GUI texture ratio to the wide button plane.
+            // This prevents the Yes/No text from being stretched.
+            const buttonTextureHeight = 512;
+            const buttonTextureWidth = Math.round(
+                buttonTextureHeight * (buttonPlaneWidth / buttonPlaneHeight)
+            );
 
+            this.advancedTexture4Buttons =
+                BABYLON.GUI.AdvancedDynamicTexture.CreateForMesh(
+                    this.buttonPlane,
+                    buttonTextureWidth,
+                    buttonTextureHeight,
+                    false
+                );
             const panel = new BABYLON.GUI.StackPanel();
             panel.isVertical = false;
             panel.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
@@ -544,18 +573,24 @@ class FbMessages {
 
             buttons.forEach(buttonName => {
                 const button = BABYLON.GUI.Button.CreateSimpleButton(buttonName, buttonName);
-                button.width = "300px";
-                button.height = "120px";
+                // Make each GUI button taller and easier to see and select.
+                button.width = "360px";
+                button.height = "220px";
                 button.color = "white";
-                button.fontSize = 45;
-                button.background = "green";
+                button.fontSize = 60;
+                button.thickness = 4; button.background = "green";
                 button.paddingLeft = "20px";
                 button.paddingRight = "20px";
 
+                // Run the action supplied by the session.
+                // This allows the Yes button to start another identical model.
                 button.onPointerUpObservable.add(() => {
                     console.log(buttonName);
-                });
 
+                    if (onButtonClick) {
+                        onButtonClick(buttonName);
+                    }
+                });
                 panel.addControl(button);
             });
         }

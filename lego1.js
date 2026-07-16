@@ -86,28 +86,88 @@ function getModel(modelLabel) {
     return modelsArray.filter(x => x.metadata.modelTitle == modelLabel)[0];
 }
 /////////////////// GAME FUNCTIONS //////////////////////////
-
 function animateModelAboveButtons(model) {
     if (!model) {
         return;
     }
 
-    const frameRate = 40;
 
-    // The buttons panel is the global "near" object.
-    // near.position is currently around (0, 1.6, 0).
-    // We move the finished model above it.
+    const frameRate = 40;
+    const animationDuration = 2 * frameRate;
+    const gapFromBlock = 0.3;
+
+    // Find the block with five connection dots in the elements menu.
+    const fiveDotBlock = elementsMenu
+        ? elementsMenu.getChildMeshes(false).find(mesh => mesh.name === "b5")
+        : null;
+
     let targetPosition;
 
-    if (near && near.position) {
-        targetPosition = near.position.clone();
-        targetPosition.y += 0.7; // above the buttons
+    if (fiveDotBlock) {
+        // Make sure all world positions and bounding boxes are current.
+        fiveDotBlock.computeWorldMatrix(true);
+        model.computeWorldMatrix(true);
+
+        const blockBounds = fiveDotBlock.getHierarchyBoundingVectors();
+        const modelBounds = model.getHierarchyBoundingVectors();
+
+        // The completed model will be reduced to 50% of its current size.
+        const currentModelWidth = modelBounds.max.x - modelBounds.min.x;
+        const targetModelWidth = currentModelWidth * 0.5;
+
+        targetPosition = model.position.clone();
+
+        // Find completed models that were positioned before this one.
+        // The current model is excluded because it has not yet finished moving.
+        const previousCompletedModels = modelsArray.filter(otherModel =>
+            otherModel !== model &&
+            otherModel.metadata &&
+            otherModel.metadata.isCompletedModel
+        );
+
+        if (previousCompletedModels.length === 0) {
+            // The first completed model is placed immediately left of b5.
+            targetPosition.x =
+                blockBounds.min.x -
+                gapFromBlock -
+                targetModelWidth / 2;
+        } else {
+            // Find the completed model whose left edge is farthest left.
+            let leftmostEdge = Infinity;
+
+            previousCompletedModels.forEach(previousModel => {
+                previousModel.computeWorldMatrix(true);
+
+                const previousBounds =
+                    previousModel.getHierarchyBoundingVectors();
+
+                leftmostEdge = Math.min(
+                    leftmostEdge,
+                    previousBounds.min.x
+                );
+            });
+
+            // Place the new completed model to the left of all earlier models.
+            targetPosition.x =
+                leftmostEdge -
+                gapFromBlock -
+                targetModelWidth / 2;
+        }
+
+        // Keep all completed models at the same vertical level.
+        targetPosition.y =
+            model.position.y +
+            (blockBounds.min.y - modelBounds.min.y);
+
+        // Align all completed models on the same Z axis.
+        targetPosition.z =
+            (blockBounds.min.z + blockBounds.max.z) / 2;
     } else {
-        // fallback if near is not available
-        targetPosition = new BABYLON.Vector3(0, 2.8, 0);
+        // Fallback position if the b5 block cannot be found.
+        targetPosition = new BABYLON.Vector3(-2.5, model.position.y, 0);
+        console.warn("The five-dot block b5 was not found.");
     }
 
-    // 50% smaller than its current size
     const targetScaling = model.scaling.clone().scale(0.5);
 
     const positionAnimation = new BABYLON.Animation(
@@ -124,7 +184,7 @@ function animateModelAboveButtons(model) {
             value: model.position.clone()
         },
         {
-            frame: 2 * frameRate,
+            frame: animationDuration,
             value: targetPosition
         }
     ]);
@@ -143,24 +203,106 @@ function animateModelAboveButtons(model) {
             value: model.scaling.clone()
         },
         {
-            frame: 2 * frameRate,
+            frame: animationDuration,
             value: targetScaling
         }
     ]);
 
-    // Optional: hide the M1 label during the animation.
-    // The label is not a child of the model, so otherwise it will stay in the old place.
-    if (model.metadata && model.metadata.labelObj) {
-        model.metadata.labelObj.hide();
-    }
+    // Mark this model as completed/display-only.
+    // Its M1 label must not reappear when setWorld() refreshes visibility.
+    if (model.metadata) {
+        model.metadata.isCompletedModel = true;
 
+        if (model.metadata.labelObj) {
+            model.metadata.labelObj.hide();
+        }
+    }
     scene.beginDirectAnimation(
         model,
         [positionAnimation, scaleAnimation],
         0,
-        2 * frameRate,
+        animationDuration,
         false
     );
+}
+
+/// Remove a completed model one building block at a time.
+///
+/// Used by Group B instead of moving the completed model above the buttons.
+/// Each block is hidden and disposed. The base model is removed last.
+function eliminateModelBlockByBlock(model) {
+    if (!model) {
+        return;
+    }
+
+    const delayBetweenBlocks = 400;
+
+    // The model must no longer respond to connection-dot clicks while
+    // its blocks are being removed.
+    disableModelConnectionDots(model);
+
+    if (model.metadata && model.metadata.labelObj) {
+        model.metadata.labelObj.hide();
+    }
+
+    // Remove the model from the active model collection immediately.
+    // This prevents setWorld() from showing it again while it disappears.
+    const modelArrayIndex = modelsArray.indexOf(model);
+
+    if (modelArrayIndex !== -1) {
+        modelsArray.splice(modelArrayIndex, 1);
+    }
+
+    // Only collect the blocks directly attached to the model.
+    // Their connection dots are children and will be disposed together
+    // with each parent block.
+    const addedBlocks = model
+        .getChildMeshes(false)
+        .filter(mesh =>
+            mesh.metadata &&
+            mesh.metadata.inModel &&
+            mesh.metadata.blockNum > 0
+        )
+        .sort((firstBlock, secondBlock) =>
+            secondBlock.metadata.blockNum -
+            firstBlock.metadata.blockNum
+        );
+
+    let blockIndex = 0;
+
+    function removeNextBlock() {
+        if (blockIndex < addedBlocks.length) {
+            const block = addedBlocks[blockIndex];
+            blockIndex++;
+
+            if (block && !block.isDisposed()) {
+                // Hide immediately, then permanently eliminate the block.
+                block.setEnabled(false);
+                block.dispose();
+            }
+
+            setTimeout(removeNextBlock, delayBetweenBlocks);
+            return;
+        }
+
+        // All added blocks are gone. Remove the base block last.
+        if (model.metadata && model.metadata.labelObj) {
+            model.metadata.labelObj.dispose();
+        }
+
+        if (!model.isDisposed()) {
+            model.setEnabled(false);
+            model.dispose();
+        }
+
+        // Do not clear currentModel when the user has already started
+        // another model during the elimination animation.
+        if (currentModel === model) {
+            currentModel = null;
+        }
+    }
+
+    removeNextBlock();
 }
 
 ///move block and connect it to model
@@ -213,20 +355,31 @@ function getTop(model) {
 
 
 }
-///TODO: I remember there is built-in property\function that hide mesh including its childs? instead of the following?
 function setVisibleModel(theMesh, setItVisible) {
     theMesh.isVisible = setItVisible;
-    let childs = theMesh.getChildMeshes(false);
+
+    const childs = theMesh.getChildMeshes(false);
+
     for (let index = 0; index < childs.length; index++) {
-        const element = childs[index];
-        element.isVisible = setItVisible;
-    }
-    if (setItVisible) {
-        theMesh.metadata.labelObj.show();
-    } else {
-        theMesh.metadata.labelObj.hide();
+        childs[index].isVisible = setItVisible;
     }
 
+    if (!theMesh.metadata || !theMesh.metadata.labelObj) {
+        return;
+    }
+
+    if (!setItVisible) {
+        theMesh.metadata.labelObj.hide();
+        return;
+    }
+
+    // A completed model remains visible, but its old M1 title stays hidden.
+    // Only the title of the new active model is displayed.
+    if (theMesh.metadata.isCompletedModel) {
+        theMesh.metadata.labelObj.hide();
+    } else {
+        theMesh.metadata.labelObj.show();
+    }
 }
 
 function createNearMenu(mode) {
@@ -930,7 +1083,33 @@ function initMeshContactSphere(tempSphere) {
     tempSphere.actionManager.registerAction(
         new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger, doClickConnection))
 }
+/// Disable all connection dots in a completed model.
+/// The dots remain visible, but clicks no longer trigger doClickConnection().
+function disableModelConnectionDots(model) {
+    if (!model) {
+        return;
+    }
 
+    // Include dots on the base block and on all blocks added to the model.
+    const allMeshes = [model, ...model.getChildMeshes(false)];
+
+    allMeshes.forEach(mesh => {
+        // Connection dots have names such as:
+        // b1.p0, b2.p-0.5, b5.p2
+        if (mesh.name && mesh.name.includes(".p")) {
+            mesh.actionManager = null;
+            mesh.isPickable = false;
+
+            // Make sure a previously selected dot is no longer yellow.
+            if (mesh.material) {
+                mesh.material.diffuseColor = notSelectedColor;
+            }
+        }
+    });
+
+    // Clear any stored selected connection for this model.
+    setModelSelectedConnection(model, null);
+}
 ///create round elment (Wheel)
 function meshWheel(scene, wheelWidth) {
     const wheel = BABYLON.MeshBuilder.CreateCylinder("c" + wheelWidth, { height: 1, diameter: 2 });

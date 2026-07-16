@@ -1,7 +1,9 @@
 "use strict"
 let currentSession = null;///will be created in messages
 let allowReport = false;
-
+// Reward for each successfully completed Group A model.
+// Array index 0 is the first completed model, index 1 is the second, etc.
+const REPEATED_MODEL_REWARDS = [20, 18, 16, 14, 12, 10, 6, 4];
 async function saveUserAction(actionType, ActionDetails, actionId, block, model, step, time, user, group, part) {
     if (!allowReport) {
         return;
@@ -30,6 +32,9 @@ class Session {
     connectedStage = 0;///the order number of true conection action (no matter which model) in the session
     group;///each group handle differant no. of models when training
     currentModelInArray = 0;///index in array of shown model
+    // Number of Group A models completed during this session.
+    // It is also used as the index in GROUP_A_MODEL_REWARDS.
+    completedRepeatedModelCount = 0;
     fb;///one line message to the larner. usage: //this.fb = new FbMessages("בוקר אביבי ושמח");
     trainingModelData;///array item per line. each line is object with the following props:
     part = "learning"///learning, training, examA, examB
@@ -82,7 +87,7 @@ class Session {
         ///we use it when comparing its selection in reportConnect
         ///the value of item i is the model name to use in overall stage i in this session
         ///the next stage number of spsific model is kept on the model
-        if (this.group == "A") {
+        if (this.group == "A" || this.group == "B") {
             // Group A: only one module, M1
             this.modelInConnectedStage = this.modelStepLabels("Sman", "M1");
         } else if (this.userId == 666) {
@@ -94,27 +99,21 @@ class Session {
         let m2;
         let m3;
         let m4;
-        if (this.group == "A") {
-            // Group A: only M1.
-            // Old M4 position was: (5, 0, 5)
-            // Two squares nearer the camera means z is reduced by 2: (5, 0, 3)
+        if (this.group == "A" || this.group == "B") {
+            // Groups A and B build the same repeated Sman/M1 model.
             m1 = createModel("Sman", "M1", 6, 0, 3);
-        } else if (this.group == "B" || this.group == "C") {
-            ///the normal multi-model groups
+        } else if (this.group == "C") {
+            // Group C keeps the original multi-model behavior.
             m1 = createModel("car", "M1", 5, 0, -5);
             m2 = createModel("chair", "M2", -5, 0, -5);
             m3 = createModel("dog", "M3", -5, 0, 5);
             m4 = createModel("man", "M4", 5, 0, 5);
         }
         switch (this.group) {///TODO: build more then one model as defined for the group
-            case "A": ///only M1 in W1
+            case "A":
+            case "B":
+                // Groups A and B each use only the repeated M1 model in W1.
                 this.worldByModel = { "M1": "W1" };
-                break;
-            case "B": ///two worlds
-                setVisibleModel(m3, false);
-                setVisibleModel(m4, false);
-                this.worldByModel = { "M1": "W1", "M2": "W1", "M3": "W2", "M4": "W2" };
-
                 break;
             case "C":///each model in one of 4 worlds
                 this.worldByModel = { "M1": "W1", "M2": "W2", "M3": "W3", "M4": "W4" };
@@ -279,8 +278,14 @@ class Session {
         let wrongItems = [];
         let step = newElement.metadata.blockNum;
         let destModelLabel = this.modelInConnectedStage[this.connectedStage];
-        let destModel = getModel(destModelLabel);
-        //console.log("step: " + step);
+
+        // Group A can contain previous completed M1 models.
+        // Always validate the connection against the new active model,
+        // rather than the first M1 returned from modelsArray.
+        let destModel =
+            this.group === "A"
+                ? currentModel
+                : getModel(destModelLabel);        //console.log("step: " + step);
         ////const dataLine = this.trainingModelData.filter(el => (el.step == step) && (el.modelName == currentModel.metadata.modelName))[0];
         const dataLine = this.trainingModelData.filter(el => (el.step == step) && (el.modelName == destModel.metadata.modelName))[0];
         //console.log("dataLine: ");
@@ -358,27 +363,60 @@ class Session {
                 //console.log("this.connectedStage: " + this.connectedStage);
                 //console.log(this.modelInConnectedStage.length + 1);
                 if (this.connectedStage == this.modelInConnectedStage.length) {
-                    if (this.group == "A") {
-                        // Group A: when M1 is finished, do not start the next part.
-                        // Instead, animate the finished model above the buttons.
-                        animateModelAboveButtons(currentModel);
+                    if (this.group == "A" || this.group == "B") {
+                        // Select the reward by completion order.
+                        const nextModelReward =
+                            REPEATED_MODEL_REWARDS[this.completedRepeatedModelCount];
+
+                        this.completedRepeatedModelCount++;
+
+                        // The completed model must no longer react to connection-dot clicks.
+                        disableModelConnectionDots(currentModel);
+
+                        if (this.group == "A") {
+                            // Group A keeps and gathers completed models above the buttons.
+                            animateModelAboveButtons(currentModel);
+                        } else {
+                            // Group B hides and eliminates the completed model block by block.
+                            eliminateModelBlockByBlock(currentModel);
+                        }
+
+                        // Hide the complete Near Buttons panel while asking whether
+                        // the participant wants to build another model.
+                        if (near) {
+                            near.isVisible = false;
+                        }
+
+                        // RLM before the question mark keeps Hebrew punctuation
+                        // on the correct visual side.
+                        const rewardText = nextModelReward + ' ש"ח';
 
                         this.doFbMessage(
                             "בנית עוד מודל בהצלחה\n" +
                             "באפשרותך לבנות מודל נוסף זהה לחלוטין\n" +
-                            "אם תסיים אותו תקבל: X ₪\n" +
-                            "האם תרצה להמשיך למודל הבא?",
+                            "אם תסיים אותו תקבל: " + rewardText + "\n" +
+                            "האם תרצה להמשיך למודל הבא\u200F?",
                             null,
-                            ["yes", "No"]
+                            ["yes", "No"],
+                            4.2,
+
+                            // Both Groups A and B restart the same repeated model.
+                            buttonName => {
+                                if (buttonName.toLowerCase() === "yes") {
+                                    this.resetRepeatedModel();
+                                } else {
+                                    // No closes the question.
+                                    if (this.fb) {
+                                        this.fb.dispose();
+                                        this.fb = null;
+                                    }
+                                }
+                            }
                         );
 
-
-                        // Optional: prevent more actions after completion
                         allowReport = false;
-
                         return;
                     }
-
                     ///other groups continue as before
                     this.nextStage();
                     return;
@@ -462,13 +500,88 @@ class Session {
     reportForbiddenMove(wrongConnection, wrongModelConnection) {
         console.log("reportWrongMove: ");
     }
-
-    doFbMessage(message, pic, buttons = null) {
+    doFbMessage(
+        message,
+        pic,
+        buttons = null,
+        y = 2.5,
+        onButtonClick = null
+    ) {
         if (this.fb) {
             this.fb.dispose();
         }
-        this.fb = new FbMessages(message, 0, 2.5, 2, pic, buttons);
+
+        this.fb = new FbMessages(
+            message,
+            0,
+            y,
+            2,
+            pic,
+            buttons,
+            onButtonClick
+        );
     }
+
+    // Start another identical Group A model.
+    //
+    // The completed model is not removed. It remains visible in its final
+    // display position, with its connection dots disabled.
+    //
+    // Everything needed for building is reset to the same state that existed
+    // before the user selected the original base block.
+    // Start another identical model for Group A or Group B.
+    //
+    // Group A leaves the previous completed model displayed above the buttons.
+    // Group B has already started eliminating the previous model block by block.
+    resetRepeatedModel() {
+        // Restart the required connection sequence from its first step.
+        this.connectedStage = 0;
+
+        // Clear selections that may still refer to the completed model.
+        selectedConnection = null;
+
+        // Create a new empty Sman/M1 base in the original position.
+        currentModel = createModel("Sman", "M1", 6, 0, 3);
+
+        // Both repeated-model groups build in W1.
+        currentWorld = "W1";
+        setWorld(currentWorld);
+
+        // Restore the building buttons.
+        if (near) {
+            near.isVisible = true;
+
+            const addButton = near.children.find(
+                button => button.name === "connect"
+            );
+
+            const deleteButton = near.children.find(
+                button => button.name === "delete"
+            );
+
+            if (addButton) {
+                addButton.isVisible = true;
+            }
+
+            if (deleteButton) {
+                deleteButton.isVisible = false;
+            }
+        }
+
+        // Allow block connections and action reporting again.
+        allowReport = true;
+
+        // Display the first-step instruction for the new model.
+        const modelName = currentModel.metadata.modelName;
+
+        this.doFbMessage(
+            "Please do step 1 in Model " +
+            currentModel.metadata.modelTitle +
+            ", following the above picture",
+            "textures/" + modelName + "1.JPG"
+        );
+    }
+
 }
 //this.fb = new FbMessages("בוקר אביבי ושמח");
 //let modelData = modelDataAll.filter(x => x.modelName == currentModel.metadata.modelName);
