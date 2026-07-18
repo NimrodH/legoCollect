@@ -4,7 +4,7 @@ let allowReport = false;
 // Reward for each successfully completed Group A model.
 // Array index 0 is the first completed model, index 1 is the second, etc.
 const REPEATED_MODEL_REWARDS = [20, 18, 16, 14, 12, 10, 6, 4];
-async function saveUserAction(actionType, ActionDetails, actionId, block, model, step, time, user, group, part) {
+async function saveUserAction(actionType, ActionDetails, actionId, block, model, step, time, user, group, part, modelOrder) {
     if (!allowReport) {
         return;
     }
@@ -18,7 +18,8 @@ async function saveUserAction(actionType, ActionDetails, actionId, block, model,
         'step': step,
         'time': time,
         'user': user + part,
-        'part': part
+        'part': part,
+        'modelOrder': modelOrder
     }
     var result = await postData(usersURL, bodyData);
     //console.log("saveUserAction: "+ actionType);
@@ -42,6 +43,9 @@ class Session {
     worldByModel;///model Mn will be in the world that is the value of item n
     timer;
     msgNextBtn; ///the next button we will get from messages when it creat this session
+    // Order of the repeated model currently being built.
+    // The first model is 1, the next model is 2, etc.
+    modelOrder = 1;
     //timer;//
     /*
     srcPoint
@@ -64,22 +68,32 @@ class Session {
     }
 
     handleReportClick = (e) => {
-        //console.log('Event received:');
-        //console.log(e);
-        if (this.part !== "learning" && currentModel) {
-            let modelMx = currentModel.metadata.modelTitle;
-            if (e.detail.action != "connect") { ///connect handle seperatly in 
-                saveUserAction(e.detail.action, e.detail.details, this.actionId++, e.detail.newElement.name, modelMx, currentModel.metadata.numOfBlocks + 1, Date.now(), this.userId, this.group, this.part)
+        // Report regular building actions only after the reporting period starts.
+        // The Yes/No buttons do not dispatch reportClick events.
+        if (allowReport && currentModel) {
+            const modelMx = currentModel.metadata.modelTitle;
+
+            // Connect actions are handled separately by reportConnect().
+            if (e.detail.action !== "connect") {
+                saveUserAction(
+                    e.detail.action,
+                    e.detail.details,
+                    this.actionId++,
+                    e.detail.newElement.name,
+                    modelMx,
+                    currentModel.metadata.numOfBlocks + 1,
+                    Date.now(),
+                    this.userId,
+                    this.group,
+                    this.part,
+                    this.modelOrder
+                );
             }
         }
-        // Handle the event
-    }
-
+    };
     async initSession() {
         this.timer = new Timer()
-        allowReport = true;
-        console.log("allowReport set to true");
-
+        //allowReport = true;
 
         //elementsMenu.metadata.labelObj =  new FbMessages("תפריט אבני בניין",0,1,0);    
         this.trainingModelData = await loadModelData();
@@ -188,6 +202,12 @@ class Session {
         delButton.isVisible = false;///if we allow to delete correct block we will get connectedStage++ twice
         let modelLabel = this.modelInConnectedStage[this.connectedStage];
         currentModel = getModel(modelLabel);///connectedStage = 0
+        // Begin the continuous reporting period when the participant starts
+        // building the first actual model. Reporting remains enabled through
+        // all repeated models and the messages displayed between them.
+        if (this.group === "A" || this.group === "B") {
+            allowReport = true;
+        }
         currentWorld = this.worldByModel[modelLabel];
         setWorld(currentWorld);///TODO:in setWorld show only relevent models follwing session.worldByModel
         let msg = "Please do step 1 in Model " + currentModel.metadata.modelTitle + ", following the above picture";
@@ -260,7 +280,7 @@ class Session {
         reportClick(action, details, newElement) {
             if (currentModel) {
                 let modelMx = currentModel.metadata.modelTitle;
-                saveUserAction(action, details, this.actionId++, newElement.name, modelMx, currentModel.metadata.numOfBlocks + 1, Date.now(), this.userId, this.group, this.part)
+                saveUserAction(action, details, this.actionId++, newElement.name, modelMx, currentModel.metadata.numOfBlocks + 1, Date.now(), this.userId, this.group, this.part,this.modelOrder)
             }
         }
     */
@@ -359,7 +379,7 @@ class Session {
 
             if (this.group == "A" || this.group == "B" || this.group == "C") {
                 let modelMx = currentModel.metadata.modelTitle;
-                saveUserAction("connect", "CORRECT", this.actionId++, typeName, modelMx, step, Date.now(), this.userId, this.group, this.part);
+                saveUserAction("connect", "CORRECT", this.actionId++, typeName, modelMx, step, Date.now(), this.userId, this.group, this.part, this.modelOrder);
                 //console.log("this.connectedStage: " + this.connectedStage);
                 //console.log(this.modelInConnectedStage.length + 1);
                 if (this.connectedStage == this.modelInConnectedStage.length) {
@@ -401,20 +421,26 @@ class Session {
                             4.2,
 
                             // Both Groups A and B restart the same repeated model.
+                            // The Yes/No decisions are intentionally not sent through user-action reporting.
+                            // A separate server request can be added to the No branch later.
+
                             buttonName => {
                                 if (buttonName.toLowerCase() === "yes") {
                                     this.resetRepeatedModel();
                                 } else {
-                                    // No closes the question.
-                                    if (this.fb) {
-                                        this.fb.dispose();
-                                        this.fb = null;
-                                    }
+                                    // NO ends the experiment and replaces the question with the final message.
+                                    this.doFbMessage(
+                                        "הניסוי הסתיים. תודה על ההשתתפות",
+                                        null,
+                                        null,
+                                        4.2
+                                    );
+                                    // A separate fetch request for the No decision can be added here later.
                                 }
                             }
                         );
 
-                        allowReport = false;
+                        //allowReport = false;
                         return;
                     }
                     ///other groups continue as before
@@ -449,7 +475,7 @@ class Session {
             let mName = currentModel.metadata.modelName;
             this.doFbMessage(msg, "textures/" + mName + step + ".JPG");
             let modelMx = currentModel.metadata.modelTitle;
-            saveUserAction("connect", "WRONG: " + wrongItems.toString(), this.actionId++, typeName, modelMx, step, Date.now(), this.userId, this.group, this.part);
+            saveUserAction("connect", "WRONG: " + wrongItems.toString(), this.actionId++, typeName, modelMx, step, Date.now(), this.userId, this.group, this.part, this.modelOrder);
             let addButton = (near.children).filter(b => b.name == "connect")[0];
             let delButton = (near.children).filter(b => b.name == "delete")[0];
             addButton.isVisible = false;
@@ -535,6 +561,9 @@ class Session {
     // Group B has already started eliminating the previous model block by block.
     resetRepeatedModel() {
         // Restart the required connection sequence from its first step.
+        // A new repeated model is starting.
+        // Keep actionId unchanged so every action remains unique.
+        this.modelOrder++;
         this.connectedStage = 0;
 
         // Clear selections that may still refer to the completed model.
@@ -569,7 +598,7 @@ class Session {
         }
 
         // Allow block connections and action reporting again.
-        allowReport = true;
+        //allowReport = true;
 
         // Display the first-step instruction for the new model.
         const modelName = currentModel.metadata.modelName;
