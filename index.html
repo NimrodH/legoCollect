@@ -65,22 +65,33 @@
                 .then((data1) => { return data1.json() });
         }
 
-
         async function postData(url = '', data = {}) {
-            //console.log(JSON.stringify(data))
-            fullURL = url + '?' + new URLSearchParams(data)
-            fetch(fullURL, {
+            const fullURL = url + '?' + new URLSearchParams(data);
+
+            return fetch(fullURL, {
                 method: 'POST',
                 body: JSON.stringify(data),
                 headers: {
                     'Content-Type': 'application/json'
                 }
             })
-                .then(response => response.json())
-                .then(data2 => console.log("postData done"))
-                .catch(error => console.error("postData error: " + error));
-        }
+                .then(async response => {
+                    const responseText = await response.text();
 
+                    if (!response.ok) {
+                        throw new Error(
+                            `POST failed: ${response.status} ${responseText}`
+                        );
+                    }
+
+                    console.log('postData done:', responseText);
+                    return responseText;
+                })
+                .catch(error => {
+                    console.error('postData error:', error);
+                    throw error;
+                });
+        }
         var canvas = document.getElementById("renderCanvas");
 
         var startRenderLoop = function (engine, canvas) {
@@ -94,7 +105,7 @@
         var createDefaultEngine = function () { return new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true, disableWebGL2Support: false }); };
 
         var sceneToRender = null;
-         
+
         /////////// CREATE SCENE ///////////////////////////
         var createScene = async function () {
             const scene = new BABYLON.Scene(engine);
