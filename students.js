@@ -158,7 +158,7 @@ class Session {
         } else if (this.group == "C") {
             // Group C uses two models in two separate worlds.
             m1 = createModel("Sman", "M1", 6, 0, 3);
-            m2 = createModel("Scat", "M2", 6, 0, 3);
+            m2 = createModel("Scat", "M2", 6, 0, -1);
 
             // Keep direct references because completed pairs remain in modelsArray.
             this.activeRepeatedModels = {
@@ -245,6 +245,55 @@ class Session {
             this.runPart();
         }
     }
+    // Collect a completed Group C model in its own world.
+    // If another model remains, switch worlds only after the animation finishes.
+    collectGroupCModel(completedModel, continueToNextModel) {
+        disableModelConnectionDots(completedModel);
+
+        // Prevent building actions while the completed model is moving.
+        if (near) {
+            near.isVisible = false;
+        }
+
+        animateModelAboveButtons(completedModel, () => {
+            if (continueToNextModel) {
+                const nextModelLabel =
+                    this.modelInConnectedStage[this.connectedStage];
+
+                currentModel =
+                    this.activeRepeatedModels[nextModelLabel];
+
+                const nextWorld =
+                    this.worldByModel[nextModelLabel];
+
+                // setWorld also hides models that do not belong to this world.
+                setWorld(nextWorld);
+
+                if (near) {
+                    near.isVisible = true;
+                }
+
+                const nextStep =
+                    currentModel.metadata.numOfBlocks + 1;
+
+                const modelName =
+                    currentModel.metadata.modelName;
+
+                this.doFbMessage(
+                    "Very good. Please do step " +
+                    nextStep +
+                    " in Model " +
+                    nextModelLabel +
+                    " (located in other place)",
+                    "textures/" +
+                    modelName +
+                    nextStep +
+                    ".JPG"
+                );
+            }
+        });
+    }
+
 
     runPart() {
         let delButton = (near.children).filter(b => b.name == "delete")[0];
@@ -439,9 +488,26 @@ class Session {
             if (this.group == "A" || this.group == "B" || this.group == "C") {
                 let modelMx = currentModel.metadata.modelTitle;
                 saveUserAction("connect", "CORRECT", this.actionId++, typeName, modelMx, step, Date.now(), this.userId, this.group, this.part, this.modelOrder);
-                //console.log("this.connectedStage: " + this.connectedStage);
-                //console.log(this.modelInConnectedStage.length + 1);
-                // Show the completion question only after every required step is finished.
+                // Group C collects each model as soon as all of that model's
+                // steps are complete, even when the other model still has steps.
+                if (
+                    this.group === "C" &&
+                    this.connectedStage < this.modelInConnectedStage.length
+                ) {
+                    const completedModelLabel =
+                        currentModel.metadata.modelTitle;
+
+                    const remainingSequence =
+                        this.modelInConnectedStage.slice(this.connectedStage);
+
+                    const completedModelHasMoreSteps =
+                        remainingSequence.includes(completedModelLabel);
+
+                    if (!completedModelHasMoreSteps) {
+                        this.collectGroupCModel(currentModel, true);
+                        return;
+                    }
+                }                // Show the completion question only after every required step is finished.
                 if (
                     this.connectedStage ==
                     this.modelInConnectedStage.length
@@ -459,26 +525,13 @@ class Session {
                         this.completedRepeatedModelCount++;
 
                         if (this.group === "C") {
-                            // Both Group C models are now complete.
-                            const completedM1 = this.activeRepeatedModels.M1;
-                            const completedM2 = this.activeRepeatedModels.M2;
+                            // M1 was already collected in W1.
+                            // Collect M2 in W2 when the complete M1/M2 pair is finished.
+                            const completedM2 =
+                                this.activeRepeatedModels.M2;
 
-                            // Neither completed model may react to connection-dot clicks.
-                            disableModelConnectionDots(completedM1);
-                            disableModelConnectionDots(completedM2);
+                            this.collectGroupCModel(completedM2, false);
 
-                            // Temporarily show both models while gathering them above the buttons.
-                            // During normal building only the model in the active world is visible.
-                            setVisibleModel(completedM1, true);
-                            setVisibleModel(completedM2, true);
-
-                            // Animate M1 first. M2 starts after M1 reaches its final position,
-                            // allowing animateModelAboveButtons() to position M2 beside it.
-                            animateModelAboveButtons(completedM1);
-
-                            window.setTimeout(() => {
-                                animateModelAboveButtons(completedM2);
-                            }, 2100);
                         } else {
                             // Groups A and B complete one model per repeated unit.
                             disableModelConnectionDots(currentModel);
@@ -667,7 +720,7 @@ class Session {
         if (this.group === "C") {
             // Group C begins a fresh M1/M2 pair.
             const newM1 = createModel("Sman", "M1", 6, 0, 3);
-            const newM2 = createModel("Scat", "M2", 6, 0, 3);
+            const newM2 = createModel("Scat", "M2", 6, 0, -1);
 
             this.activeRepeatedModels = {
                 M1: newM1,
