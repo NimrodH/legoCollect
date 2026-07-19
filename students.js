@@ -25,7 +25,26 @@ async function saveUserAction(actionType, ActionDetails, actionId, block, model,
     //console.log("saveUserAction: "+ actionType);
 }//
 
+// Save the participant's final result when they select the NO button.
+// This uses a separate fetch request from the regular action reporting.
+async function saveNoDecision(userId, group, completedModelCount) {
+    const bodyData = {
+        // Tell the Lambda that this request belongs in the results table.
+        requestType: "userResult",
 
+        user: String(userId),
+        group: group,
+        completedModelCount: completedModelCount,
+        time: Date.now()
+    };
+
+    try {
+        await postData(usersURL, bodyData);
+        console.log("NO decision saved:", bodyData);
+    } catch (error) {
+        console.error("Could not save NO decision:", error);
+    }
+}
 
 class Session {
     userId;
@@ -428,6 +447,15 @@ class Session {
                                 if (buttonName.toLowerCase() === "yes") {
                                     this.resetRepeatedModel();
                                 } else {
+                                    // Send a separate request containing the participant's final result.
+                                    // completedRepeatedModelCount already includes the model that was
+                                    // completed immediately before displaying the Yes/No question.
+                                    saveNoDecision(
+                                        this.userId,
+                                        this.group,
+                                        this.completedRepeatedModelCount
+                                    );
+
                                     // NO ends the experiment and replaces the question with the final message.
                                     this.doFbMessage(
                                         "הניסוי הסתיים. תודה על ההשתתפות",
@@ -435,7 +463,6 @@ class Session {
                                         null,
                                         4.2
                                     );
-                                    // A separate fetch request for the No decision can be added here later.
                                 }
                             }
                         );
