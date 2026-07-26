@@ -5,21 +5,24 @@ let allowReport = false;
 // Array index 0 is the first completed model, index 1 is the second, etc.
 const REPEATED_MODEL_REWARDS_AB = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 const REPEATED_MODEL_REWARDS_CD = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
-// Group C alternates between two partially built models.
-// M1/man and M2/dog each receive building steps.
-// 10 complete pairs: alternating M1 and M2, each pair has multiple steps
-// For 19 rewards, we have 20 steps total (10 pairs × 2 models)
+// Group C/D flips between models in configured chunks.
+// M1/man and M2/dog each receive 11 steps (22 total stage entries).
 const REPEATED_PAIR_MODEL_SEQUENCE = [
-    "M1", "M2",
-    "M1", "M2",
-    "M1", "M2",
-    "M1", "M2",
-    "M1", "M2",
-    "M1", "M2",
-    "M1", "M2",
-    "M1", "M2",
-    "M1", "M2",
-    "M1", "M2"
+    // 3 in man, 2 in dog
+    "M1", "M1", "M1",
+    "M2", "M2",
+    // 2 in man, 3 in dog
+    "M1", "M1",
+    "M2", "M2", "M2",
+    // 3 in man, 3 in dog
+    "M1", "M1", "M1",
+    "M2", "M2", "M2",
+    // 2 in man, 2 in dog
+    "M1", "M1",
+    "M2", "M2",
+    // 1 in man, 1 in dog
+    "M1",
+    "M2"
 ];
 async function saveUserAction(actionType, ActionDetails, actionId, block, model, step, time, user, group, part, modelOrder) {
     if (!allowReport) {
@@ -149,7 +152,7 @@ class Session {
             this.group == "C" ||
             this.group == "D"
         ) {
-            // Groups C and D build one man/M1 and one Dog/M2 as a pair.
+            // Groups C and D build one man/M1 and one dog/M2 as a pair.
             this.modelInConnectedStage = [
                 ...REPEATED_PAIR_MODEL_SEQUENCE
             ];
