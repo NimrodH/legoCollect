@@ -118,6 +118,8 @@ function animateModelAboveButtons(model, onAnimationComplete = null) {
         // The completed model will be reduced to 50% of its current size.
         const currentModelWidth = modelBounds.max.x - modelBounds.min.x;
         const targetModelWidth = currentModelWidth * 0.5;
+        const isM2Model =
+            model.metadata && model.metadata.modelTitle === "M2";
 
         targetPosition = model.position.clone();
 
@@ -145,14 +147,23 @@ function animateModelAboveButtons(model, onAnimationComplete = null) {
             )
         );
         if (previousCompletedModels.length === 0) {
-            // The first completed model is placed immediately left of b5.
-            targetPosition.x =
-                blockBounds.min.x -
-                gapFromBlock -
-                targetModelWidth / 2;
+            if (isM2Model) {
+                // M2 completed models are collected to the right of b5.
+                targetPosition.x =
+                    blockBounds.max.x +
+                    gapFromBlock +
+                    targetModelWidth / 2;
+            } else {
+                // Other models are collected to the left of b5.
+                targetPosition.x =
+                    blockBounds.min.x -
+                    gapFromBlock -
+                    targetModelWidth / 2;
+            }
         } else {
-            // Find the completed model whose left edge is farthest left.
+            // Find the edge of the existing collected models in this world.
             let leftmostEdge = Infinity;
+            let rightmostEdge = -Infinity;
 
             previousCompletedModels.forEach(previousModel => {
                 previousModel.computeWorldMatrix(true);
@@ -164,13 +175,26 @@ function animateModelAboveButtons(model, onAnimationComplete = null) {
                     leftmostEdge,
                     previousBounds.min.x
                 );
+
+                rightmostEdge = Math.max(
+                    rightmostEdge,
+                    previousBounds.max.x
+                );
             });
 
-            // Place the new completed model to the left of all earlier models.
-            targetPosition.x =
-                leftmostEdge -
-                gapFromBlock -
-                targetModelWidth / 2;
+            if (isM2Model) {
+                // Place new M2 to the right of all earlier collected models.
+                targetPosition.x =
+                    rightmostEdge +
+                    gapFromBlock +
+                    targetModelWidth / 2;
+            } else {
+                // Place other models to the left of all earlier collected models.
+                targetPosition.x =
+                    leftmostEdge -
+                    gapFromBlock -
+                    targetModelWidth / 2;
+            }
         }
 
         // Keep all completed models at the same vertical level.
@@ -183,7 +207,10 @@ function animateModelAboveButtons(model, onAnimationComplete = null) {
             (blockBounds.min.z + blockBounds.max.z) / 2;
     } else {
         // Fallback position if the b5 block cannot be found.
-        targetPosition = new BABYLON.Vector3(-2.5, model.position.y, 0);
+        targetPosition =
+            model.metadata && model.metadata.modelTitle === "M2"
+                ? new BABYLON.Vector3(2.5, model.position.y, 0)
+                : new BABYLON.Vector3(-2.5, model.position.y, 0);
         console.warn("The five-dot block b5 was not found.");
     }
 

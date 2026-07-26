@@ -173,7 +173,7 @@ class Session {
             this.group == "D"
         ) {            // Group C uses two models in two separate worlds.
             m1 = createModel("man", "M1", 6, 0, 3);
-            m2 = createModel("dog", "M2", 6, 0, -1);
+            m2 = createModel("dog", "M2", -6, 0, -1);
 
             // Keep direct references because completed pairs remain in modelsArray.
             this.activeRepeatedModels = {
@@ -786,7 +786,7 @@ class Session {
         if (this.group === "C" || this.group === "D") {
             // Group C and D begins a fresh M1/M2 pair.
             const newM1 = createModel("man", "M1", 6, 0, 3);
-            const newM2 = createModel("dog", "M2", 6, 0, -1);
+            const newM2 = createModel("dog", "M2", -6, 0, -1);
 
             this.activeRepeatedModels = {
                 M1: newM1,
