@@ -429,8 +429,7 @@ function animate(box, oldPos, newPos, scene) {
         box.setParent(currentModel);
         ///rais all model above ground
         setOnGround(currentModel, 1);
-        let h = getTop(currentModel);
-        currentModel.metadata.labelObj.setY(h + 0.3);
+        updateModelLabelHeight(currentModel);
         if (currentSession) {
             currentSession.reportConnect(box);///newElement(= box) has connectedTo object
         }
@@ -457,6 +456,17 @@ function getTop(model) {
     return boundingInfo.max.y;
 
 
+}
+
+function updateModelLabelHeight(model) {
+    if (!model || !model.metadata || !model.metadata.labelObj) {
+        return;
+    }
+
+    // Keep the title above the current highest block to avoid overlap.
+    const topY = getTop(model);
+    const labelGap = 0.35;
+    model.metadata.labelObj.setY(topY + labelGap);
 }
 function setVisibleModel(theMesh, setItVisible) {
     theMesh.isVisible = setItVisible;
@@ -575,6 +585,7 @@ function createModel(theModelName, theModelTitle, x, y, z) {
     model.metadata.labelObj = new FbMessages(theModelTitle, x, y + 1, z);
     modelsArray.push(model);
     setOnGround(model, 1);
+    updateModelLabelHeight(model);
     return model;
 }
 
@@ -650,6 +661,7 @@ function removeLastBlock() {
     lastBlock.dispose();
     currentModel.metadata.numOfBlocks = currentModel.metadata.numOfBlocks - 1;
     setOnGround(currentModel, 1);
+    updateModelLabelHeight(currentModel);
     if (currentSession) {
         currentSession.reportDelete();
     }
@@ -939,6 +951,7 @@ function doConnect(newElement, newColor, selectedConnectionMame, toAnimate) {
         newElement.position = newPos;
         newElement.setParent(currentModel);
         setOnGround(currentModel, 1);
+        updateModelLabelHeight(currentModel);
     }
     //////
 
