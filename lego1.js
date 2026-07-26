@@ -464,9 +464,25 @@ function updateModelLabelHeight(model) {
     }
 
     // Keep the title above the current highest block to avoid overlap.
+    // Target spacing: about 2/3 of the sign height between model top and sign bottom.
     const topY = getTop(model);
-    const labelGap = 0.35;
-    model.metadata.labelObj.setY(topY + labelGap);
+    const labelPlane = model.metadata.labelObj.plane;
+
+    if (!labelPlane) {
+        model.metadata.labelObj.setY(topY + 0.35);
+        return;
+    }
+
+    labelPlane.computeWorldMatrix(true);
+    const labelBounds = labelPlane.getHierarchyBoundingVectors();
+    const signHeight = Math.max(
+        0.01,
+        labelBounds.max.y - labelBounds.min.y
+    );
+    const edgeGap = signHeight * (2 / 3);
+    const centerOffset = edgeGap + signHeight / 2;
+
+    model.metadata.labelObj.setY(topY + centerOffset);
 }
 function setVisibleModel(theMesh, setItVisible) {
     theMesh.isVisible = setItVisible;
