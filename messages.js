@@ -219,7 +219,7 @@ class Messages {
         this.advancedTexture.addControl(inputTextArea);
 
         const keyboard = new BABYLON.GUI.VirtualKeyboard("vkb");
-        keyboard.addKeysRow(["man", "car", "Dog", "chair", "\u2190"]);
+        keyboard.addKeysRow(["man", "car", "dog", "chair", "\u2190"]);
         keyboard.connect(inputTextArea);
         keyboard.top = "-10px";
         keyboard.scaleY = 2;
@@ -260,7 +260,7 @@ class Messages {
         this.advancedTexture.addControl(inputTextArea);
 
         const keyboard = new BABYLON.GUI.VirtualKeyboard("vkb");
-        keyboard.addKeysRow(["man", "car", "Dog", "chair", "\u2190"]);
+        keyboard.addKeysRow(["man", "car", "dog", "chair", "\u2190"]);
         keyboard.connect(inputTextArea);
         keyboard.top = "-10px";
         keyboard.scaleY = 2;

@@ -6,14 +6,20 @@ let allowReport = false;
 const REPEATED_MODEL_REWARDS_AB = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 const REPEATED_MODEL_REWARDS_CD = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
 // Group C alternates between two partially built models.
-// M1/man and M2/Dog each receive five building steps.
+// M1/man and M2/dog each receive building steps.
+// 10 complete pairs: alternating M1 and M2, each pair has multiple steps
+// For 19 rewards, we have 20 steps total (10 pairs × 2 models)
 const REPEATED_PAIR_MODEL_SEQUENCE = [
-    "M1", "M1",
-    "M2", "M2", "M2",
-    "M1", "M1",
-    "M2",
-    "M1",
-    "M2"
+    "M1", "M2",
+    "M1", "M2",
+    "M1", "M2",
+    "M1", "M2",
+    "M1", "M2",
+    "M1", "M2",
+    "M1", "M2",
+    "M1", "M2",
+    "M1", "M2",
+    "M1", "M2"
 ];
 async function saveUserAction(actionType, ActionDetails, actionId, block, model, step, time, user, group, part, modelOrder) {
     if (!allowReport) {
@@ -164,7 +170,7 @@ class Session {
             this.group == "D"
         ) {            // Group C uses two models in two separate worlds.
             m1 = createModel("man", "M1", 6, 0, 3);
-            m2 = createModel("Dog", "M2", 6, 0, -1);
+            m2 = createModel("dog", "M2", 6, 0, -1);
 
             // Keep direct references because completed pairs remain in modelsArray.
             this.activeRepeatedModels = {
@@ -195,7 +201,7 @@ class Session {
                 currentModel = createModel("chair", "M2", 5, 0, 5);
                 let modelData = this.trainingModelData.filter(x => x.modelName == currentModel.metadata.modelName);
                 reBuildModel(modelData, modelData.length + 1);
-                currentModel = createModel("Sman", "M4", -5, 0, -5);
+                currentModel = createModel("man", "M4", -5, 0, -5);
                 modelData = this.trainingModelData.filter(x => x.modelName == currentModel.metadata.modelName);
                 reBuildModel(modelData, modelData.length + 1);
                 currentModel = createModel("car", "M1", 5, 0, -5);
@@ -777,7 +783,7 @@ class Session {
         if (this.group === "C" || this.group === "D") {
             // Group C and D begins a fresh M1/M2 pair.
             const newM1 = createModel("man", "M1", 6, 0, 3);
-            const newM2 = createModel("Dog", "M2", 6, 0, -1);
+            const newM2 = createModel("dog", "M2", 6, 0, -1);
 
             this.activeRepeatedModels = {
                 M1: newM1,
