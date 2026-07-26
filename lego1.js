@@ -148,9 +148,48 @@ function animateModelAboveButtons(model, onAnimationComplete = null) {
         );
         if (previousCompletedModels.length === 0) {
             if (isM2Model) {
-                // M2 completed models are collected to the right of b5.
+                // Place first M2 to the right of all visible content in its world.
+                let worldRightEdge = blockBounds.max.x;
+
+                if (elementsMenu) {
+                    elementsMenu.computeWorldMatrix(true);
+
+                    const menuBounds =
+                        elementsMenu.getHierarchyBoundingVectors();
+
+                    worldRightEdge = Math.max(
+                        worldRightEdge,
+                        menuBounds.max.x
+                    );
+                }
+
+                const visibleWorldModels = modelsArray.filter(otherModel =>
+                    otherModel &&
+                    otherModel.isVisible &&
+                    otherModel !== model &&
+                    otherModel.metadata &&
+                    (
+                        !modelWorld ||
+                        currentSession.worldByModel[
+                            otherModel.metadata.modelTitle
+                        ] === modelWorld
+                    )
+                );
+
+                visibleWorldModels.forEach(worldModel => {
+                    worldModel.computeWorldMatrix(true);
+
+                    const worldModelBounds =
+                        worldModel.getHierarchyBoundingVectors();
+
+                    worldRightEdge = Math.max(
+                        worldRightEdge,
+                        worldModelBounds.max.x
+                    );
+                });
+
                 targetPosition.x =
-                    blockBounds.max.x +
+                    worldRightEdge +
                     gapFromBlock +
                     targetModelWidth / 2;
             } else {
