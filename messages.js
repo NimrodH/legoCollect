@@ -219,7 +219,7 @@ class Messages {
         this.advancedTexture.addControl(inputTextArea);
 
         const keyboard = new BABYLON.GUI.VirtualKeyboard("vkb");
-        keyboard.addKeysRow(["Sman", "car", "dog", "chair", "\u2190"]);
+        keyboard.addKeysRow(["man", "car", "Dog", "chair", "\u2190"]);
         keyboard.connect(inputTextArea);
         keyboard.top = "-10px";
         keyboard.scaleY = 2;
@@ -260,7 +260,7 @@ class Messages {
         this.advancedTexture.addControl(inputTextArea);
 
         const keyboard = new BABYLON.GUI.VirtualKeyboard("vkb");
-        keyboard.addKeysRow(["Sman", "car", "dog", "chair", "\u2190"]);
+        keyboard.addKeysRow(["man", "car", "Dog", "chair", "\u2190"]);
         keyboard.connect(inputTextArea);
         keyboard.top = "-10px";
         keyboard.scaleY = 2;
@@ -394,6 +394,7 @@ class Messages {
                 this.textField.text = "מימינך ומשמאלך בסיסים לשני מודלים\nשני מודלים נוספים יוצגו לפניך בהמשך\nרק לאחר קבלת הוראה מהמנחה ניתן \nלהתחיל לבנות את המודלים בהתאם\nלהסברים שיופיעו מעל אבני הבניין. בהצלחה";
                 break;
             case "C":
+            case "D":
                 this.textField.text = "משמאלך שוב הבסיס למודל\nשלושה מודלים נוספים יוצגו לפניך בהמשך\nרק לאחר קבלת הוראה מהמנחה ניתן \nלהתחיל לבנות את המודלים בהתאם\nלהסברים שיופיעו מעל אבני הבניין. בהצלחה";
                 break;
             default:

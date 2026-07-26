@@ -256,11 +256,18 @@ function animateModelAboveButtons(model, onAnimationComplete = null) {
 ///
 /// Used by Group B instead of moving the completed model above the buttons.
 /// Each block is hidden and disposed. The base model is removed last.
-function eliminateModelBlockByBlock(model) {
+// Eliminate a model and optionally notify the session when it is gone.
+function eliminateModelBlockByBlock(
+    model,
+    onAnimationComplete = null
+) {
     if (!model) {
+        if (onAnimationComplete) {
+            onAnimationComplete();
+        }
+
         return;
     }
-
     const delayBetweenBlocks = 400;
 
     // The model must no longer respond to connection-dot clicks while
@@ -325,6 +332,10 @@ function eliminateModelBlockByBlock(model) {
         // another model during the elimination animation.
         if (currentModel === model) {
             currentModel = null;
+        }
+        // Allow Group D to switch worlds only after elimination is complete.
+        if (onAnimationComplete) {
+            onAnimationComplete();
         }
     }
 
