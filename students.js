@@ -25,31 +25,48 @@ const REPEATED_PAIR_MODEL_SEQUENCE = [
     "M2"
 ];
 
-// Test mode (userId === "test"): lay out 20 already-finished duplicates of
-// each Group C/D model (man/M1 and dog/M2) in their final built position, so
-// the reviewer can see every step's end result before the real M1/M2 pair
-// is handed to the user for building.
-function showTestModelDuplicates(trainingModelData) {
-    const DUPLICATE_COUNT = 20;
-    const SPACING = 2;
-    const startX = -((DUPLICATE_COUNT - 1) * SPACING) / 2;
-    const modelsToPreview = [
-        { modelName: "man", modelTitle: "man", z: 12 },
-        { modelName: "dog", modelTitle: "dog", z: -12 }
-    ];
+// Test mode (userId === "test" or 999): for every model already created for this
+// session (M1, and M2 for groups C/D), build 10 same-titled duplicates as if
+// the user had already completed that model 10 times, and instantly place
+// each one where a real completed model would end up, stacked next to the
+// previous one. They stay there, so each model the user later finishes
+// animates in right next to this preview stack.
+function showTestModelFinalPreview(trainingModelData) {
+    const DUPLICATES_PER_MODEL = 10;
+    const modelsToPreview = [getModel("M1"), getModel("M2")].filter(Boolean);
 
     // reBuildModel() acts on the global currentModel, so it must be
     // restored once every duplicate has been built.
     const previousModel = currentModel;
 
-    modelsToPreview.forEach(({ modelName, modelTitle, z }) => {
+    modelsToPreview.forEach(realModel => {
+        const modelName = realModel.metadata.modelName;
+        const modelTitle = realModel.metadata.modelTitle;
         const modelData = trainingModelData.filter(x => x.modelName == modelName);
 
-        for (let i = 0; i < DUPLICATE_COUNT; i++) {
-            currentModel = createModel(modelName, modelTitle, startX + i * SPACING, 0, z);
+        // Hide the real (not yet built) model while previewing, so it isn't
+        // counted as "existing content" when the first duplicate's gathering
+        // edge is computed - matching what happens when it really finishes.
+        const wasVisible = realModel.isVisible;
+        setVisibleModel(realModel, false);
+
+        for (let i = 0; i < DUPLICATES_PER_MODEL; i++) {
+            // Same title/position as the real model, so world visibility and
+            // the gathering side (left/right of the five-dot block) match it.
+            currentModel = createModel(
+                modelName,
+                modelTitle,
+                realModel.position.x,
+                realModel.position.y,
+                realModel.position.z
+            );
             reBuildModel(modelData, modelData.length + 1);
             disableModelConnectionDots(currentModel);
+            // instant = true: place next to the previous duplicate right away.
+            animateModelAboveButtons(currentModel, null, true);
         }
+
+        setVisibleModel(realModel, wasVisible);
     });
 
     currentModel = previousModel;
@@ -210,12 +227,6 @@ class Session {
                 M1: m1,
                 M2: m2
             };
-
-            // Test user: preview all 20 finished duplicates of each model
-            // before the real M1/M2 pair is presented for building.
-            if (this.userId == "test") {
-                showTestModelDuplicates(this.trainingModelData);
-            }
         } switch (this.group) {///TODO: build more then one model as defined for the group
             case "A":
             case "B":
@@ -294,6 +305,14 @@ class Session {
             console.log("pic: " + pic)
             this.doFbMessage(msg, pic);
             */
+
+            // Test user: preview every session model already finished and
+            // parked in its post-animation resting place, before step 1
+            // of the real first model is requested.
+            if (this.userId == "test" || this.userId == 999) {
+                showTestModelFinalPreview(this.trainingModelData);
+            }
+
             this.runPart();
         }
     }

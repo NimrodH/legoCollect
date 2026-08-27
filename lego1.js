@@ -86,7 +86,9 @@ function getModel(modelLabel) {
     return modelsArray.filter(x => x.metadata.modelTitle == modelLabel)[0];
 }
 /////////////////// GAME FUNCTIONS //////////////////////////
-function animateModelAboveButtons(model, onAnimationComplete = null) {
+// When instant is true the model is placed at its final gathered spot right
+// away (no 2s animation). Used to stack many test-preview duplicates quickly.
+function animateModelAboveButtons(model, onAnimationComplete = null, instant = false) {
     if (!model) {
         if (onAnimationComplete) {
             onAnimationComplete();
@@ -286,6 +288,11 @@ function animateModelAboveButtons(model, onAnimationComplete = null) {
         console.warn("The five-dot block b5 was not found.");
     }
 
+    // Dog's finished models are set back one grid square further from the camera.
+    if (model.metadata && model.metadata.modelName === "dog") {
+        targetPosition.z += 1;
+    }
+
     const targetScaling = model.scaling.clone().scale(0.5);
 
     const positionAnimation = new BABYLON.Animation(
@@ -335,6 +342,17 @@ function animateModelAboveButtons(model, onAnimationComplete = null) {
             model.metadata.labelObj.hide();
         }
     }
+    if (instant) {
+        model.position = targetPosition;
+        model.scaling = targetScaling;
+
+        if (onAnimationComplete) {
+            onAnimationComplete();
+        }
+
+        return;
+    }
+
     // Notify the session only after the collection animation finishes.
     scene.beginDirectAnimation(
         model,
