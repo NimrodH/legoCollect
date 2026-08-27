@@ -24,6 +24,36 @@ const REPEATED_PAIR_MODEL_SEQUENCE = [
     "M1",
     "M2"
 ];
+
+// Test mode (userId === "test"): lay out 20 already-finished duplicates of
+// each Group C/D model (man/M1 and dog/M2) in their final built position, so
+// the reviewer can see every step's end result before the real M1/M2 pair
+// is handed to the user for building.
+function showTestModelDuplicates(trainingModelData) {
+    const DUPLICATE_COUNT = 20;
+    const SPACING = 2;
+    const startX = -((DUPLICATE_COUNT - 1) * SPACING) / 2;
+    const modelsToPreview = [
+        { modelName: "man", modelTitle: "man", z: 12 },
+        { modelName: "dog", modelTitle: "dog", z: -12 }
+    ];
+
+    // reBuildModel() acts on the global currentModel, so it must be
+    // restored once every duplicate has been built.
+    const previousModel = currentModel;
+
+    modelsToPreview.forEach(({ modelName, modelTitle, z }) => {
+        const modelData = trainingModelData.filter(x => x.modelName == modelName);
+
+        for (let i = 0; i < DUPLICATE_COUNT; i++) {
+            currentModel = createModel(modelName, modelTitle, startX + i * SPACING, 0, z);
+            reBuildModel(modelData, modelData.length + 1);
+            disableModelConnectionDots(currentModel);
+        }
+    });
+
+    currentModel = previousModel;
+}
 async function saveUserAction(actionType, ActionDetails, actionId, block, model, step, time, user, group, part, modelOrder) {
     if (!allowReport) {
         return;
@@ -180,6 +210,12 @@ class Session {
                 M1: m1,
                 M2: m2
             };
+
+            // Test user: preview all 20 finished duplicates of each model
+            // before the real M1/M2 pair is presented for building.
+            if (this.userId == "test") {
+                showTestModelDuplicates(this.trainingModelData);
+            }
         } switch (this.group) {///TODO: build more then one model as defined for the group
             case "A":
             case "B":
