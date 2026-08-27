@@ -233,6 +233,14 @@ function animateModelAboveButtons(model, onAnimationComplete = null, instant = f
                     gapFromBlock -
                     targetModelWidth / 2;
             }
+
+            // The first "man" reserves two extra slots, so it (and every
+            // later man, which stacks off of it) lands where the third one
+            // used to be.
+            if (model.metadata && model.metadata.modelName === "man") {
+                const slotStep = targetModelWidth + gapFromBlock;
+                targetPosition.x += isRightSideModel ? 2 * slotStep : -2 * slotStep;
+            }
         } else {
             // Find the edge of the existing collected models on this side.
             let leftmostEdge = Infinity;
@@ -278,6 +286,13 @@ function animateModelAboveButtons(model, onAnimationComplete = null, instant = f
         // Align all completed models on the same Z axis.
         targetPosition.z =
             (blockBounds.min.z + blockBounds.max.z) / 2;
+
+        // Each later model in the row is pulled a bit closer to the camera's
+        // original (start-of-scene) position, so the row curves inward like an
+        // arc. This is a fixed Z step, not read from the live camera, so it
+        // does not change if the user moves/looks around.
+        const cameraArcStepZ = 0.3;
+        targetPosition.z -= previousCompletedModels.length * cameraArcStepZ;
     } else {
         // Fallback position if the b5 block cannot be found.
         // Keep the model on whichever side of the origin it was built on.
@@ -288,7 +303,9 @@ function animateModelAboveButtons(model, onAnimationComplete = null, instant = f
         console.warn("The five-dot block b5 was not found.");
     }
 
-    // Dog's finished models are set back one grid square further from the camera.
+    // Dog's finished models are set back one grid square further from the
+    // camera's original (start-of-scene) position. Fixed offset, not read
+    // from the live camera, so it does not change if the user moves.
     if (model.metadata && model.metadata.modelName === "dog") {
         targetPosition.z += 1;
     }
