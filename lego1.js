@@ -287,12 +287,14 @@ function animateModelAboveButtons(model, onAnimationComplete = null, instant = f
         targetPosition.z =
             (blockBounds.min.z + blockBounds.max.z) / 2;
 
-        // Each later model in the row is pulled a bit closer to the camera's
-        // original (start-of-scene) position, so the row curves inward like an
-        // arc. This is a fixed Z step, not read from the live camera, so it
-        // does not change if the user moves/looks around.
-        const cameraArcStepZ = 0.3;
-        targetPosition.z -= previousCompletedModels.length * cameraArcStepZ;
+        // Each later "man" model in the row is pulled a bit closer to the
+        // camera's original (start-of-scene) position, so the row curves
+        // inward like an arc. This is a fixed Z step, not read from the live
+        // camera, so it does not change if the user moves/looks around.
+        if (model.metadata && model.metadata.modelName === "man") {
+            const cameraArcStepZ = 0.3;
+            targetPosition.z -= previousCompletedModels.length * cameraArcStepZ;
+        }
     } else {
         // Fallback position if the b5 block cannot be found.
         // Keep the model on whichever side of the origin it was built on.
