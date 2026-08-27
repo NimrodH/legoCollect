@@ -119,6 +119,9 @@
             camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -7), scene);///used for VR
             camera.setTarget(new BABYLON.Vector3(0, 4, -15));///used for VR
             camera.attachControl(canvas, true);///used always
+            ///saved so the X controller button can restore the camera to its start position
+            const originalCameraPosition = camera.position.clone();
+            const originalCameraTarget = new BABYLON.Vector3(0, 4, -15);
             ///end camera///
 
             ///LIGHT///
@@ -241,16 +244,23 @@
                 if (xrInput) {
                     xrInput.controllers.forEach(controller => {
                         if (controller.inputSource.gamepad) {
-                            camera.position = new BABYLON.Vector3(0, 5, -7);
                             const buttons = controller.inputSource.gamepad.buttons;
 
-                            // Check if button A is pressed
-                            if (buttons[0].pressed) {
-                                // React to button A being pressed
-                                console.log("Button A pressed");
-                                camera.position = new BABYLON.Vector3(0, 5, -7);
-                                // Add your action here
+                            // The X button only exists on the left controller (xr-standard mapping, index 4).
+                            const isXButtonPressed =
+                                controller.inputSource.handedness === "left" &&
+                                buttons[4] &&
+                                buttons[4].pressed;
+
+                            // Reset once per press, not every frame the button stays down.
+                            controller.metadata = controller.metadata || {};
+
+                            if (isXButtonPressed && !controller.metadata.xButtonWasPressed) {
+                                camera.position = originalCameraPosition.clone();
+                                camera.setTarget(originalCameraTarget.clone());
                             }
+
+                            controller.metadata.xButtonWasPressed = isXButtonPressed;
                         }
                     });
                 }
