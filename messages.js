@@ -160,7 +160,7 @@ class Messages {
 
     showEditID() {
         this.currentScreen = "editID";
-        this.textField.text = "יש ללחוץ (להקליק) בתוך השדה השחור\n\nלאחר שנפתחה המקלדת, יש להזין את \nהמספר שקיבלת ממנהלת הניסוי \n\nלסיום לחצ/י המשך"
+        this.textField.text = "יש ללחוץ (להקליק) בתוך השדה השחור\n\nלאחר שנפתחה המקלדת, יש להזין את \nהמספר שקיבלת ממנהל הניסוי \n\nלסיום לחצ/י המשך"
 
         this.nextButton.isEnabled = false;
 
@@ -287,7 +287,7 @@ class Messages {
     /////END TAKEPICS MODE without session
     showEditGroup() {
         this.currentScreen = "editGroup";
-        this.textField.text = "יש להזין את אות הקבוצה שקיבלת ממנהלת הניסוי\nבסיום לחצ/י המשך"
+        this.textField.text = "יש להזין את אות הקבוצה שקיבלת ממנהל הניסוי\nבסיום לחצ/י המשך"
 
         this.nextButton.isEnabled = false;
 
@@ -302,7 +302,7 @@ class Messages {
         this.advancedTexture.addControl(inputTextArea);
 
         const keyboard = new BABYLON.GUI.VirtualKeyboard("vkb");
-        keyboard.addKeysRow(["A", "B", "C", "D", "E", "F", "\u2190"]);
+        keyboard.addKeysRow(["A", "B", "C", "D", "\u2190"]);
         keyboard.connect(inputTextArea);
         keyboard.top = "-10px";
         keyboard.scaleY = 2;
@@ -395,7 +395,7 @@ class Messages {
                 break;
             case "C":
             case "D":
-                this.textField.text = "משמאלך שוב הבסיס למודל\nשלושה מודלים נוספים יוצגו לפניך בהמשך\nרק לאחר קבלת הוראה מהמנחה ניתן \nלהתחיל לבנות את המודלים בהתאם\nלהסברים שיופיעו מעל אבני הבניין. בהצלחה";
+                this.textField.text = "משמאלך שוב הבסיס למודל\nמודל נוסף בצד ימין יוצג לפנייך בהמשך\nרק לאחר קבלת הוראה מהמנחה ניתן \nלהתחיל לבנות את המודלים בהתאם\nלהסברים שיופיעו מעל אבני הבניין. בהצלחה";
                 break;
             default:
                 break;

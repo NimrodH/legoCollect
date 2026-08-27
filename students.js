@@ -3,8 +3,8 @@ let currentSession = null;///will be created in messages
 let allowReport = false;
 // Reward for each successfully completed Group A model.
 // Array index 0 is the first completed model, index 1 is the second, etc.
-const REPEATED_MODEL_REWARDS_AB = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-const REPEATED_MODEL_REWARDS_CD = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
+const REPEATED_MODEL_REWARDS_AB = [50, 32, 21, 14, 10, 7, 5, 4, 3, 2];
+const REPEATED_MODEL_REWARDS_CD = [50, 25, 16, 11, 8, 6, 5, 4, 3.5, 3, 2.5, 2, 2, 2, 2, 2, 2, 2, 1, 1];
 // Group C/D flips between models in configured chunks.
 // M1/man and M2/dog each receive 11 steps (22 total stage entries).
 const REPEATED_PAIR_MODEL_SEQUENCE = [
@@ -577,7 +577,7 @@ class Session {
                         this.group == "C" ||
                         this.group == "D"
                     ) {                        // Select the reward by completion order.
-                        
+
                         const nextModelReward =
                             (this.group === "C" || this.group === "D")
                                 ? REPEATED_MODEL_REWARDS_CD[this.completedRepeatedModelCount]
@@ -622,14 +622,14 @@ class Session {
                                 this.group === "C" ||
                                 this.group === "D"
                             )
-                                ? "בנית את שני המודלים בהצלחה\n" + "באפשרותך לבנות זוג מודלים נוסף\n" +
+                                ? "בנית את שני המודלים בהצלחה\n" +
+                                "באפשרותך לבנות זוג מודלים נוסף\n" +
                                 "אם תסיים אותם תקבל: " + rewardText + "\n" +
-                                "האם תרצה להמשיך לזוג הבא\u200F?"
+                                "האם תרצה להמשיך לזוג הבא?\u200F"
                                 : "בנית עוד מודל בהצלחה\n" +
                                 "באפשרותך לבנות מודל נוסף זהה לחלוטין\n" +
                                 "אם תסיים אותו תקבל: " + rewardText + "\n" +
-                                "האם תרצה להמשיך למודל הבא\u200F?";
-
+                                "האם תרצה להמשיך למודל הבא?\u200F";
                         this.doFbMessage(
                             completionMessage,
                             null,
