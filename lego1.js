@@ -118,8 +118,12 @@ function animateModelAboveButtons(model, onAnimationComplete = null) {
         // The completed model will be reduced to 50% of its current size.
         const currentModelWidth = modelBounds.max.x - modelBounds.min.x;
         const targetModelWidth = currentModelWidth * 0.5;
-        const isM2Model =
-            model.metadata && model.metadata.modelTitle === "M2";
+
+        // The side to collect on follows where the model was originally built:
+        // built to the right of b5 (like "man") collects further right,
+        // built to the left of b5 (like "dog") collects further left.
+        const blockCenterX = (blockBounds.min.x + blockBounds.max.x) / 2;
+        const isRightSideModel = model.position.x > blockCenterX;
 
         targetPosition = model.position.clone();
 
@@ -133,12 +137,13 @@ function animateModelAboveButtons(model, onAnimationComplete = null) {
                 ]
                 : null;
 
-        // Find only previously completed models from this model's world.
+        // Find only previously completed models from this model's world and side.
         // The current model is excluded because its animation is not finished.
         const previousCompletedModels = modelsArray.filter(otherModel =>
             otherModel !== model &&
             otherModel.metadata &&
             otherModel.metadata.isCompletedModel &&
+            (otherModel.position.x > blockCenterX) === isRightSideModel &&
             (
                 !modelWorld ||
                 currentSession.worldByModel[
@@ -147,8 +152,22 @@ function animateModelAboveButtons(model, onAnimationComplete = null) {
             )
         );
         if (previousCompletedModels.length === 0) {
-            if (isM2Model) {
-                // Place first M2 to the right of all visible content in its world.
+            // Consider only visible models from this world when finding the starting edge.
+            const visibleWorldModels = modelsArray.filter(otherModel =>
+                otherModel &&
+                otherModel.isVisible &&
+                otherModel !== model &&
+                otherModel.metadata &&
+                (
+                    !modelWorld ||
+                    currentSession.worldByModel[
+                        otherModel.metadata.modelTitle
+                    ] === modelWorld
+                )
+            );
+
+            if (isRightSideModel) {
+                // Place the first model to the right of all visible content in its world.
                 let worldRightEdge = blockBounds.max.x;
 
                 if (elementsMenu) {
@@ -162,19 +181,6 @@ function animateModelAboveButtons(model, onAnimationComplete = null) {
                         menuBounds.max.x
                     );
                 }
-
-                const visibleWorldModels = modelsArray.filter(otherModel =>
-                    otherModel &&
-                    otherModel.isVisible &&
-                    otherModel !== model &&
-                    otherModel.metadata &&
-                    (
-                        !modelWorld ||
-                        currentSession.worldByModel[
-                            otherModel.metadata.modelTitle
-                        ] === modelWorld
-                    )
-                );
 
                 visibleWorldModels.forEach(worldModel => {
                     worldModel.computeWorldMatrix(true);
@@ -193,14 +199,40 @@ function animateModelAboveButtons(model, onAnimationComplete = null) {
                     gapFromBlock +
                     targetModelWidth / 2;
             } else {
-                // Other models are collected to the left of b5.
+                // Place the first model to the left of all visible content in its world.
+                let worldLeftEdge = blockBounds.min.x;
+
+                if (elementsMenu) {
+                    elementsMenu.computeWorldMatrix(true);
+
+                    const menuBounds =
+                        elementsMenu.getHierarchyBoundingVectors();
+
+                    worldLeftEdge = Math.min(
+                        worldLeftEdge,
+                        menuBounds.min.x
+                    );
+                }
+
+                visibleWorldModels.forEach(worldModel => {
+                    worldModel.computeWorldMatrix(true);
+
+                    const worldModelBounds =
+                        worldModel.getHierarchyBoundingVectors();
+
+                    worldLeftEdge = Math.min(
+                        worldLeftEdge,
+                        worldModelBounds.min.x
+                    );
+                });
+
                 targetPosition.x =
-                    blockBounds.min.x -
+                    worldLeftEdge -
                     gapFromBlock -
                     targetModelWidth / 2;
             }
         } else {
-            // Find the edge of the existing collected models in this world.
+            // Find the edge of the existing collected models on this side.
             let leftmostEdge = Infinity;
             let rightmostEdge = -Infinity;
 
@@ -221,14 +253,14 @@ function animateModelAboveButtons(model, onAnimationComplete = null) {
                 );
             });
 
-            if (isM2Model) {
-                // Place new M2 to the right of all earlier collected models.
+            if (isRightSideModel) {
+                // Place the new model to the right of all earlier collected models.
                 targetPosition.x =
                     rightmostEdge +
                     gapFromBlock +
                     targetModelWidth / 2;
             } else {
-                // Place other models to the left of all earlier collected models.
+                // Place the new model to the left of all earlier collected models.
                 targetPosition.x =
                     leftmostEdge -
                     gapFromBlock -
@@ -246,8 +278,9 @@ function animateModelAboveButtons(model, onAnimationComplete = null) {
             (blockBounds.min.z + blockBounds.max.z) / 2;
     } else {
         // Fallback position if the b5 block cannot be found.
+        // Keep the model on whichever side of the origin it was built on.
         targetPosition =
-            model.metadata && model.metadata.modelTitle === "M2"
+            model.position.x > 0
                 ? new BABYLON.Vector3(2.5, model.position.y, 0)
                 : new BABYLON.Vector3(-2.5, model.position.y, 0);
         console.warn("The five-dot block b5 was not found.");
