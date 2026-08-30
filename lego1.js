@@ -278,6 +278,14 @@ function animateModelAboveButtons(model, onAnimationComplete = null, instant = f
             }
         }
 
+        // Give completed dog models a slightly wider row gap without changing
+        // the man model spacing. This keeps the dog line visually separated
+        // while leaving the man row behavior intact.
+        if (model.metadata && model.metadata.modelName === "dog" && previousCompletedModels.length > 0) {
+            const dogExtraCollectionGap = 0.2;
+            targetPosition.x += isRightSideModel ? dogExtraCollectionGap : -dogExtraCollectionGap;
+        }
+
         // Keep all completed models at the same vertical level.
         targetPosition.y =
             model.position.y +
