@@ -1319,6 +1319,13 @@ function disableModelConnectionDots(model) {
 
     // Clear any stored selected connection for this model.
     setModelSelectedConnection(model, null);
+
+    // Also un-select any block still highlighted (yellow) on the elements menu,
+    // since the model is done and no further connection can be made to it.
+    if (selectedConnection) {
+        selectedConnection.material.diffuseColor = notSelectedColor;
+        selectedConnection = null;
+    }
 }
 ///create round elment (Wheel)
 function meshWheel(scene, wheelWidth) {
