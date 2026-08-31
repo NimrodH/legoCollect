@@ -149,6 +149,12 @@ class Session {
 
     constructor(id) {
         this.userId = id;
+        // Test user 666 skips the forced walkthrough and completes every
+        // model after only 2 blocks, to quickly cycle through the flow.
+        this.isShortModelTest = (id == 666);
+        if (this.isShortModelTest) {
+            enforceTraining = false;
+        }
         addEventListener("reportClick", this.handleReportClick.bind(this))
     }
 
@@ -193,18 +199,19 @@ class Session {
         ///the next stage number of spsific model is kept on the model
         if (this.group == "A" || this.group == "B") {
             // Groups A and B repeatedly build the man/M1 model.
-            this.modelInConnectedStage =
-                this.modelStepLabels("man", "M1");
+            // Test user 666 completes the model after only 2 blocks.
+            this.modelInConnectedStage = this.isShortModelTest
+                ? ["M1", "M1"]
+                : this.modelStepLabels("man", "M1");
         } else if (
             this.group == "C" ||
             this.group == "D"
         ) {
             // Groups C and D build one man/M1 and one dog/M2 as a pair.
-            this.modelInConnectedStage = [
-                ...REPEATED_PAIR_MODEL_SEQUENCE
-            ];
-        } else if (this.userId == 666) {
-            this.modelInConnectedStage = ["M1", "M1", "M4"];
+            // Test user 666 completes each of M1/M2 after only 2 blocks.
+            this.modelInConnectedStage = this.isShortModelTest
+                ? ["M1", "M1", "M2", "M2"]
+                : [...REPEATED_PAIR_MODEL_SEQUENCE];
         } else {
             this.modelInConnectedStage = ["M1", "M1", "M4", "M4", "M4", "M2", "M2", "M2", "M2", "M3", "M3", "M3", "M2", "M2", "M2", "M2", "M4", "M4", "M4", "M4", "M1", "M1", "M1", "M3", "M3", "M3", "M1", "M1", "M1", "M4", "M4", "M4", "M4", "M2", "M2", "M2", "M3", "M3", "M3", "M1", "M1", "M1", "M3", "M3"];
         }        //this.worldByModel; ///model Mn will be in the world that is the value of item n
@@ -633,10 +640,19 @@ class Session {
                         this.group == "D"
                     ) {                        // Select the reward by completion order.
 
-                        const nextModelReward =
+                        const rewardsArray =
                             (this.group === "C" || this.group === "D")
-                                ? REPEATED_MODEL_REWARDS_CD[this.completedRepeatedModelCount]
-                                : REPEATED_MODEL_REWARDS_AB[this.completedRepeatedModelCount];
+                                ? REPEATED_MODEL_REWARDS_CD
+                                : REPEATED_MODEL_REWARDS_AB;
+
+                        const nextModelReward =
+                            rewardsArray[this.completedRepeatedModelCount];
+
+                        // No entry left in the rewards array: the model just
+                        // completed was the last one that had a reward to offer.
+                        const isLastRewardedModel =
+                            this.completedRepeatedModelCount >=
+                            rewardsArray.length;
 
                         this.completedRepeatedModelCount++;
 
@@ -671,6 +687,25 @@ class Session {
 
                         // RLM before the question mark keeps Hebrew punctuation
                         // on the correct visual side.
+                        if (isLastRewardedModel) {
+                            // No more models to offer: end the experiment
+                            // the same way the "No" answer would.
+                            saveNoDecision(
+                                this.userId,
+                                this.group,
+                                this.completedRepeatedModelCount
+                            );
+
+                            this.doFbMessage(
+                                "הניסוי הסתיים. תודה על ההשתתפות",
+                                null,
+                                null,
+                                4.2
+                            );
+                            //allowReport = false;
+                            return;
+                        }
+
                         const rewardText = nextModelReward + ' ש"ח';
                         const completionMessage =
                             (
@@ -836,6 +871,13 @@ class Session {
         // Start a new repeated unit while preserving the global actionId.
         this.modelOrder++;
         this.connectedStage = 0;
+
+        // Test user 666 rebuilds so quickly that a block can already be
+        // highlighted yellow on the elements menu when "yes" is clicked.
+        // Clear that highlight too, only for this test id.
+        if (this.isShortModelTest && selectedConnection) {
+            selectedConnection.material.diffuseColor = notSelectedColor;
+        }
         selectedConnection = null;
 
         if (this.group === "C" || this.group === "D") {
@@ -849,9 +891,10 @@ class Session {
             };
 
             // Restore the complete alternating sequence for the new pair.
-            this.modelInConnectedStage = [
-                ...REPEATED_PAIR_MODEL_SEQUENCE
-            ];
+            // Test user 666 keeps the shortened 2-block-per-model sequence.
+            this.modelInConnectedStage = this.isShortModelTest
+                ? ["M1", "M1", "M2", "M2"]
+                : [...REPEATED_PAIR_MODEL_SEQUENCE];
 
             // Every new pair begins with M1 in W1.
             currentModel = newM1;

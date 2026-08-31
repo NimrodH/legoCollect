@@ -12,7 +12,7 @@ const rotationX = new BABYLON.Vector3(1.5708, 0, 0);
 const rotationY = new BABYLON.Vector3(0, 1.5708, 0);
 const rotationZ = new BABYLON.Vector3(0, 0, 1.5708);//Math.PI / 2 get diferent value in its last digit here and when called from mesh
 
-const enforceTraining = false//for debug use false. when true disable the next button till user do instruction
+let enforceTraining = true//for debug use false. when true disable the next button till user do instruction. also forced to false for test userId 666
 
 
 const colorsObj = [

@@ -125,6 +125,22 @@ class Messages {
                 break;
             case "trainingScreen":
                 //this.showGroupIstructions();
+                // Groups A, B, C and D get an extra reward-explanation screen first.
+                if (
+                    currentSession.group === "A" ||
+                    currentSession.group === "B" ||
+                    currentSession.group === "C" ||
+                    currentSession.group === "D"
+                ) {
+                    this.showGroupRewardInfo();
+                } else {
+                    disposeModels();
+                    currentSession.initSession();
+                    this.showConnect();
+                    this.currentScreen = "end";
+                }
+                break;
+            case "groupRewardInfo":
                 disposeModels();
                 currentSession.initSession();
                 this.showConnect();
@@ -384,14 +400,21 @@ class Messages {
         this.currentScreen = "trainingScreen";
         this.textField.text = "לפני הוספת אבן למודל יש לבחור בליטה במודל\n ובליטה בחלק המתחבר כך שיצבעו בצבע צהוב\n לאחר מכן יש ללחוץ על כפתור [>>]. לאחר \nלחיצה על כפתור זה, האבן תוצמד למודל\n והנקודות שנבחרו יתלכדו\n\nלהסרת האבן האחרונה שנוספה למודל \nיש ללחוץ על כפתור [<<].כעת \nחבר/י מספר אבנים למודל על פי הנחיות המנחה"
     }
+    showGroupRewardInfo() {
+        this.currentScreen = "groupRewardInfo";
+        this.textField.text = "התגמול שלך במחקר תלוי במספר זוגות המודלים שתבנה\nתקבל את סכום הכסף הגבוה ביותר עבור הזוג הראשון\nפחות עבור הזוג השני, אפילו פחות עבור השלישי וכן הלאה\nלפני שתבנה כל זוג מודלים, המערכת תגיד לך\nכמה כסף תוכל להרוויח מבניית זוג נוסף";
+        // The user clicks continue once done reading, regardless of enforceTraining.
+        this.nextButton.isEnabled = true;
+    }
+
     showConnect() {
         this.currentScreen = "connect";
         switch (currentSession.group) {
             case "A":
-                this.textField.text = "מימינך ומשמאלך בסיסים לשני מודלים\nמאחורי אבני הבניין ישנם שני בסיסים נוספים\nרק לאחר קבלת הוראה מהמנחה ניתן \nלהתחיל לבנות את המודלים בהתאם\nלהסברים שיופיעו מעל אבני הבניין. בהצלחה";
+                this.textField.text = "משמאלך הבסיס הראשון לבנייה\n ניתן להתחיל בבנייה\nבהצלחה";
                 break;
             case "B":
-                this.textField.text = "מימינך ומשמאלך בסיסים לשני מודלים\nשני מודלים נוספים יוצגו לפניך בהמשך\nרק לאחר קבלת הוראה מהמנחה ניתן \nלהתחיל לבנות את המודלים בהתאם\nלהסברים שיופיעו מעל אבני הבניין. בהצלחה";
+                this.textField.text = "משמאלך הבסיס הראשון לבנייה\n ניתן להתחיל בבנייה\nבהצלחה";
                 break;
             case "C":
             case "D":
