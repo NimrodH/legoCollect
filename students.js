@@ -3,7 +3,7 @@ let currentSession = null;///will be created in messages
 let allowReport = false;
 // Reward for each successfully completed stage (one man + one dog).
 // Array index 0 is the first completed stage, index 1 is the second, etc.
-const REPEATED_MODEL_REWARDS_AB = [50, 32, 21, 14, 10, 7, 5, 4, 3, 2];
+const REPEATED_MODEL_REWARDS_AB = [50, 32, 21, 15, 11, 7, 5, 4, 3, 2];
 const REPEATED_MODEL_REWARDS_CD = [50, 25, 16, 11, 8, 6, 5, 4, 3.5, 3, 2.5, 2, 2, 2, 2, 2, 2, 2, 1, 1];
 // Group C/D flips between models in configured chunks.
 // M1/man and M2/dog each receive 11 steps (22 total stage entries).
