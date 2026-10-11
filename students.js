@@ -1,7 +1,7 @@
 "use strict"
 let currentSession = null;///will be created in messages
 let allowReport = false;
-// Reward for each successfully completed Group A model.
+// Reward for each successfully completed stage (one man + one dog).
 // Array index 0 is the first completed model, index 1 is the second, etc.
 const REPEATED_MODEL_REWARDS_AB = [50, 32, 21, 14, 10, 7, 5, 4, 3, 2];
 const REPEATED_MODEL_REWARDS_CD = [50, 25, 16, 11, 8, 6, 5, 4, 3.5, 3, 2.5, 2, 2, 2, 2, 2, 2, 2, 1, 1];
@@ -26,7 +26,7 @@ const REPEATED_PAIR_MODEL_SEQUENCE = [
 ];
 
 // Test mode (userId === "test" or 999): for every model already created for this
-// session (M1, and M2 for groups C/D), build 10 same-titled duplicates as if
+// session (M1 and M2), build 10 same-titled duplicates as if
 // the user had already completed that model 10 times, and instantly place
 // each one where a real completed model would end up, stacked next to the
 // previous one. They stay there, so each model the user later finishes
@@ -119,8 +119,8 @@ class Session {
     connectedStage = 0;///the order number of true conection action (no matter which model) in the session
     group;///each group handle differant no. of models when training
     currentModelInArray = 0;///index in array of shown model
-    // Number of Group A models completed during this session.
-    // It is also used as the index in GROUP_A_MODEL_REWARDS.
+    // Number of man/dog stages completed during this session.
+    // It is also used as the index in the rewards arrays.
     completedRepeatedModelCount = 0;
     fb;///one line message to the larner. usage: //this.fb = new FbMessages("בוקר אביבי ושמח");
     trainingModelData;///array item per line. each line is object with the following props:
@@ -156,6 +156,33 @@ class Session {
             enforceTraining = false;
         }
         addEventListener("reportClick", this.handleReportClick.bind(this))
+    }
+
+    // Groups A-D build a man/M1 and a dog/M2 in every stage. The stage is
+    // done (reward question, next stage) only when both models are done.
+    usesModelPair() {
+        return (
+            this.group === "A" ||
+            this.group === "B" ||
+            this.group === "C" ||
+            this.group === "D"
+        );
+    }
+
+    // Steps of one stage. A/B finish the whole man and then the whole dog;
+    // C/D flip between them following REPEATED_PAIR_MODEL_SEQUENCE.
+    // Test user 666 completes each of M1/M2 after only 2 blocks.
+    pairStageSequence() {
+        if (this.isShortModelTest) {
+            return ["M1", "M1", "M2", "M2"];
+        }
+        if (this.group === "A" || this.group === "B") {
+            return [
+                ...this.modelStepLabels("man", "M1"),
+                ...this.modelStepLabels("dog", "M2")
+            ];
+        }
+        return [...REPEATED_PAIR_MODEL_SEQUENCE];
     }
 
     modelStepLabels(modelName, modelTitle) {
@@ -197,21 +224,9 @@ class Session {
         ///we use it when comparing its selection in reportConnect
         ///the value of item i is the model name to use in overall stage i in this session
         ///the next stage number of spsific model is kept on the model
-        if (this.group == "A" || this.group == "B") {
-            // Groups A and B repeatedly build the man/M1 model.
-            // Test user 666 completes the model after only 2 blocks.
-            this.modelInConnectedStage = this.isShortModelTest
-                ? ["M1", "M1"]
-                : this.modelStepLabels("man", "M1");
-        } else if (
-            this.group == "C" ||
-            this.group == "D"
-        ) {
-            // Groups C and D build one man/M1 and one dog/M2 as a pair.
-            // Test user 666 completes each of M1/M2 after only 2 blocks.
-            this.modelInConnectedStage = this.isShortModelTest
-                ? ["M1", "M1", "M2", "M2"]
-                : [...REPEATED_PAIR_MODEL_SEQUENCE];
+        if (this.usesModelPair()) {
+            // Every stage of groups A-D is one man/M1 and one dog/M2.
+            this.modelInConnectedStage = this.pairStageSequence();
         } else {
             this.modelInConnectedStage = ["M1", "M1", "M4", "M4", "M4", "M2", "M2", "M2", "M2", "M3", "M3", "M3", "M2", "M2", "M2", "M2", "M4", "M4", "M4", "M4", "M1", "M1", "M1", "M3", "M3", "M3", "M1", "M1", "M1", "M4", "M4", "M4", "M4", "M2", "M2", "M2", "M3", "M3", "M3", "M1", "M1", "M1", "M3", "M3"];
         }        //this.worldByModel; ///model Mn will be in the world that is the value of item n
@@ -219,13 +234,8 @@ class Session {
         let m2;
         let m3;
         let m4;
-        if (this.group == "A" || this.group == "B") {
-            // Groups A and B build the same repeated man/M1 model.
-            m1 = createModel("man", "M1", 6, 0, 3);
-        } else if (
-            this.group == "C" ||
-            this.group == "D"
-        ) {            // Group C uses two models in two separate worlds.
+        if (this.usesModelPair()) {
+            // Groups A-D build one man/M1 and one dog/M2 in every stage.
             m1 = createModel("man", "M1", 6, 0, 3);
             m2 = createModel("dog", "M2", -6, 0, -1);
 
@@ -237,8 +247,9 @@ class Session {
         } switch (this.group) {///TODO: build more then one model as defined for the group
             case "A":
             case "B":
-                // Groups A and B each use only the repeated M1 model in W1.
-                this.worldByModel = { "M1": "W1" };
+                // Groups A and B build the man and then the dog in the same
+                // world, so both bases stay visible during the whole stage.
+                this.worldByModel = { "M1": "W1", "M2": "W1" };
                 break;
             case "C":
             case "D":
@@ -323,10 +334,10 @@ class Session {
             this.runPart();
         }
     }
-    // Finish one model from the current C/D pair.
+    // Finish one model from the current man/dog pair.
     //
-    // Group C gathers the completed model above the buttons.
-    // Group D eliminates the completed model block by block.
+    // Groups A and C gather the completed model above the buttons.
+    // Groups B and D eliminate the completed model block by block.
     //
     // If the other model still has required steps, change worlds only after
     // the current completion animation has finished.
@@ -383,14 +394,14 @@ class Session {
             );
         };
 
-        if (this.group === "D") {
-            // Group D uses the Group B elimination animation.
+        if (this.group === "B" || this.group === "D") {
+            // Groups B and D use the elimination animation.
             eliminateModelBlockByBlock(
                 completedModel,
                 afterAnimation
             );
         } else {
-            // Group C uses the Group A collection animation.
+            // Groups A and C use the collection animation.
             animateModelAboveButtons(
                 completedModel,
                 afterAnimation
@@ -402,12 +413,8 @@ class Session {
         let delButton = (near.children).filter(b => b.name == "delete")[0];
         delButton.isVisible = false;///if we allow to delete correct block we will get connectedStage++ twice
         let modelLabel = this.modelInConnectedStage[this.connectedStage];
-        // Groups C and D must use the current pair, not an older model.
-        const usesRepeatedPair =
-            this.group === "C" ||
-            this.group === "D";
-
-        currentModel = usesRepeatedPair
+        // Groups A-D must use the current pair, not an older model.
+        currentModel = this.usesModelPair()
             ? this.activeRepeatedModels[modelLabel]
             : getModel(modelLabel);
         // building the first actual model. Reporting remains enabled through
@@ -602,12 +609,9 @@ class Session {
                 saveUserAction("connect", "CORRECT", this.actionId++, typeName, modelMx, step, Date.now(), this.userId, this.group, this.part, this.modelOrder);
                 // Group C collects each model as soon as all of that model's
                 // steps are complete, even when the other model still has steps.
-                // Groups C and D finish each model when that model has no remaining steps.
+                // Groups A-D finish each model when that model has no remaining steps.
                 if (
-                    (
-                        this.group === "C" ||
-                        this.group === "D"
-                    ) &&
+                    this.usesModelPair() &&
                     this.connectedStage < this.modelInConnectedStage.length
                 ) {
                     const completedModelLabel =
@@ -621,7 +625,7 @@ class Session {
 
                     if (!completedModelHasMoreSteps) {
                         //this.collectGroupCModel(currentModel, true);
-                        // C gathers the model; D eliminates it.
+                        // A/C gather the model; B/D eliminate it.
                         // Continue with the other model after the animation.
                         this.finishPairModel(currentModel, true);
                         return;
@@ -631,8 +635,7 @@ class Session {
                     this.connectedStage ==
                     this.modelInConnectedStage.length
                 ) {
-                    // Groups A and B complete one model.
-                    // Group C completes one M1/M2 pair.
+                    // Groups A-D complete one M1/M2 pair.
                     if (
                         this.group == "A" ||
                         this.group == "B" ||
@@ -656,29 +659,13 @@ class Session {
 
                         this.completedRepeatedModelCount++;
 
-                        if (
-                            this.group === "C" ||
-                            this.group === "D"
-                        ) {
-                            // M1 was already completed before the final pair step.
-                            // Finish M2 now while W2 remains active.
-                            const completedM2 =
-                                this.activeRepeatedModels.M2;
-
-                            // Group C gathers M2.
-                            // Group D eliminates M2.
-                            this.finishPairModel(completedM2, false);
-                        } else {                            // Groups A and B complete one model per repeated unit.
-                            disableModelConnectionDots(currentModel);
-
-                            if (this.group === "A") {
-                                // Group A gathers the completed model above the buttons.
-                                animateModelAboveButtons(currentModel);
-                            } else {
-                                // Group B eliminates the completed model block by block.
-                                eliminateModelBlockByBlock(currentModel);
-                            }
-                        }
+                        // M1 was already completed before the final pair step.
+                        // Finish M2 now while its world remains active.
+                        // Groups A/C gather M2; groups B/D eliminate it.
+                        this.finishPairModel(
+                            this.activeRepeatedModels.M2,
+                            false
+                        );
                         // Hide the complete Near Buttons panel while asking whether
                         // the participant wants to build another model.
                         if (near) {
@@ -708,18 +695,10 @@ class Session {
 
                         const rewardText = nextModelReward + ' ש"ח';
                         const completionMessage =
-                            (
-                                this.group === "C" ||
-                                this.group === "D"
-                            )
-                                ? "בנית את שני המודלים בהצלחה\n" +
-                                "באפשרותך לבנות זוג מודלים נוסף\n" +
-                                "אם תסיים אותם תקבל: " + rewardText + "\n" +
-                                "האם תרצה להמשיך לזוג הבא?\u200F"
-                                : "בנית עוד מודל בהצלחה\n" +
-                                "באפשרותך לבנות מודל נוסף זהה לחלוטין\n" +
-                                "אם תסיים אותו תקבל: " + rewardText + "\n" +
-                                "האם תרצה להמשיך למודל הבא?\u200F";
+                            "בנית את שני המודלים בהצלחה\n" +
+                            "באפשרותך לבנות זוג מודלים נוסף\n" +
+                            "אם תסיים אותם תקבל: " + rewardText + "\n" +
+                            "האם תרצה להמשיך לזוג הבא?\u200F";
                         this.doFbMessage(
                             completionMessage,
                             null,
@@ -729,7 +708,7 @@ class Session {
                                 if (buttonName.toLowerCase() === "yes") {
                                     this.resetRepeatedModel();
                                 } else {
-                                    // For Groups C and D this reports completed pairs.
+                                    // Groups A-D report completed pairs.
                                     saveNoDecision(
                                         this.userId,
                                         this.group,
@@ -759,7 +738,7 @@ class Session {
                 } else {
                     let nextModelLabel = this.modelInConnectedStage[this.connectedStage];
                     currentModel =
-                        this.group === "C" || this.group === "D"
+                        this.usesModelPair()
                             ? this.activeRepeatedModels[nextModelLabel]
                             : getModel(nextModelLabel);
                     let nextWorld = this.worldByModel[nextModelLabel];
@@ -856,17 +835,13 @@ class Session {
         );
     }
 
-    // Start another identical Group A model.
+    // Start another identical man/dog stage.
     //
-    // The completed model is not removed. It remains visible in its final
-    // display position, with its connection dots disabled.
+    // Groups A/C leave the previous completed models displayed above the buttons.
+    // Groups B/D have already started eliminating them block by block.
     //
     // Everything needed for building is reset to the same state that existed
     // before the user selected the original base block.
-    // Start another identical model for Group A or Group B.
-    //
-    // Group A leaves the previous completed model displayed above the buttons.
-    // Group B has already started eliminating the previous model block by block.
     resetRepeatedModel() {
         // Start a new repeated unit while preserving the global actionId.
         this.modelOrder++;
@@ -880,8 +855,8 @@ class Session {
         }
         selectedConnection = null;
 
-        if (this.group === "C" || this.group === "D") {
-            // Group C and D begins a fresh M1/M2 pair.
+        if (this.usesModelPair()) {
+            // Groups A-D begin a fresh M1/M2 pair.
             const newM1 = createModel("man", "M1", 6, 0, 3);
             const newM2 = createModel("dog", "M2", -6, 0, -1);
 
@@ -890,23 +865,16 @@ class Session {
                 M2: newM2
             };
 
-            // Restore the complete alternating sequence for the new pair.
-            // Test user 666 keeps the shortened 2-block-per-model sequence.
-            this.modelInConnectedStage = this.isShortModelTest
-                ? ["M1", "M1", "M2", "M2"]
-                : [...REPEATED_PAIR_MODEL_SEQUENCE];
+            // Restore the complete step sequence for the new pair.
+            this.modelInConnectedStage = this.pairStageSequence();
 
-            // Every new pair begins with M1 in W1.
+            // Every new pair begins with M1 in W1. setWorld() shows M2 too
+            // for A/B (same world) and hides it for C/D (W2).
             currentModel = newM1;
             currentWorld = "W1";
 
             setVisibleModel(newM1, true);
             setVisibleModel(newM2, false);
-            setWorld(currentWorld);
-        } else {
-            // Groups A and B begin another man/M1 model.
-            currentModel = createModel("man", "M1", 6, 0, 3);
-            currentWorld = "W1";
             setWorld(currentWorld);
         }
         // Restore the building buttons.
