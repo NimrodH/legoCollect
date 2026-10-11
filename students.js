@@ -2,7 +2,7 @@
 let currentSession = null;///will be created in messages
 let allowReport = false;
 // Reward for each successfully completed stage (one man + one dog).
-// Array index 0 is the first completed model, index 1 is the second, etc.
+// Array index 0 is the first completed stage, index 1 is the second, etc.
 const REPEATED_MODEL_REWARDS_AB = [50, 32, 21, 14, 10, 7, 5, 4, 3, 2];
 const REPEATED_MODEL_REWARDS_CD = [50, 25, 16, 11, 8, 6, 5, 4, 3.5, 3, 2.5, 2, 2, 2, 2, 2, 2, 2, 1, 1];
 // Group C/D flips between models in configured chunks.
@@ -648,16 +648,19 @@ class Session {
                                 ? REPEATED_MODEL_REWARDS_CD
                                 : REPEATED_MODEL_REWARDS_AB;
 
+                        // The first stage earns rewardsArray[0] (announced on
+                        // the reward-info screen), so the offer after stage n
+                        // is for stage n+1: rewardsArray[n].
+                        this.completedRepeatedModelCount++;
+
                         const nextModelReward =
                             rewardsArray[this.completedRepeatedModelCount];
 
-                        // No entry left in the rewards array: the model just
-                        // completed was the last one that had a reward to offer.
+                        // No entry left in the rewards array: the stage just
+                        // completed was the last one that had a reward.
                         const isLastRewardedModel =
                             this.completedRepeatedModelCount >=
                             rewardsArray.length;
-
-                        this.completedRepeatedModelCount++;
 
                         // M1 was already completed before the final pair step.
                         // Finish M2 now while its world remains active.
